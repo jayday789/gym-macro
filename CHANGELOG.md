@@ -28,3 +28,6 @@
  
 ## vpushed changlog stuff and bug fixes on stall - Tue 08/04/2026 22:36 
 - pushed changlog stuff and bug fixes on stall 
+ 
+## vjunk fix 2 - Tue 08/04/2026 23:14 
+- junk fix 2 

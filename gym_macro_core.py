@@ -5,7 +5,7 @@ Core automation logic for the Roblox gym macro.
 Made by starlingz
 """
 
-__version__ = "pushed changlog stuff and bug fixes on stall"
+__version__ = "junk fix 2"
 
 import time
 import random
@@ -1240,11 +1240,12 @@ class GymMacro:
                     # Check maintaining unless no-food mode
                     if not self.cfg.junk_no_food and self.is_maintaining(screen=screen):
                         return "maintaining"
-                    # junk uses less stamina per rep — need more unchanged checks before getting off
+                    # junk uses less stamina per rep — use tighter tolerance to detect tiny changes
                     fingerprint = self.stamina_fingerprint()
                     if fingerprint is not None and last_fingerprint_j is not None:
                         drift = max(abs(a - b) for a, b in zip(fingerprint, last_fingerprint_j))
-                        if drift <= self.cfg.stall_fingerprint_tolerance:
+                        # use tolerance of 1.0 for junk (much smaller changes per rep)
+                        if drift <= 1.0:
                             stall_count_j += 1
                             # junk barely moves stamina — need 8 unchanged (~8 seconds)
                             if stall_count_j >= 8:
