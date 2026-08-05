@@ -1,3 +1,6 @@
+## v1.0.17 - 08/05/2026 16:28
+- shouldve fixed one rep mode weight reading
+
 ## v1.0.16 - 08/05/2026 15:21
 - weight fix (again)
 

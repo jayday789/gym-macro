@@ -5,7 +5,7 @@ Core automation logic for the Roblox gym macro.
 Made by starlingz
 """
 
-__version__ = "1.0.16"
+__version__ = "1.0.17"
 
 import time
 import random
@@ -1234,6 +1234,10 @@ class GymMacro:
             self._total_reps += 1
             self._sets_done += 1
             if self.cfg.progress_report_enabled and self._sets_done % self.cfg.progress_report_interval == 0:
+                # read weight fresh before reporting
+                weight = self._read_weight_from_screen()
+                if weight:
+                    self._last_weight_kg = weight
                 self._send_progress_report()
             return "low_stamina"
 
@@ -1734,8 +1738,8 @@ class GymMacro:
             roi = screen[roi_y1:roi_y2, roi_x1:roi_x2]
             
             gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-            _, thresh = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY)
-            upscaled = cv2.resize(thresh, (0, 0), fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
+            _, thresh = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY)
+            upscaled = cv2.resize(thresh, (0, 0), fx=4, fy=4, interpolation=cv2.INTER_CUBIC)
             raw = _pyt.image_to_string(upscaled, config='--psm 7')
             self.log(f"  OCR raw text: '{raw.strip()}'")
             
