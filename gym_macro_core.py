@@ -5,7 +5,7 @@ Core automation logic for the Roblox gym macro.
 Made by starlingz
 """
 
-__version__ = "use stamina numbers to fix early regen and stall bug"
+__version__ = ""
 
 import time
 import random

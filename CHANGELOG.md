@@ -1,48 +1,51 @@
-# Changelog
+## v - 08/05/2026 01:29
+- fixed changelog
 
-## Latest
+## v1.0.8 - 08/04/2026
+- all workouts now use OCR stamina number for stall detection (3s same number = regen)
+- fixed junk mode false stall triggers
+- fixed pre workout accidentally interacting with machine
+- fixed keybind defaults (lmb workout, space exit)
+- added F6 hotkey toggle
+- added version counter
 
-- added F6 hotkey to toggle macro on/off (works even when game is focused)
-- added pre workout shaker (1 scoop every 10 min, works in all modes)
-- added creatine shaker (5 scoops every 4 min, junk mode)
+## v1.0.7
+- added pre workout shaker (1 scoop every 10 min, all modes)
+- fixed creatine shaker circle detection for different resolutions
+- added disconnect detection + discord alert
+
+## v1.0.6
 - added progress reports to discord (sets, reps, weight, xp, time)
 - added 2x crew xp gamepass + server boost tracking
+- added rep counting via stamina drops
+- fixed weight OCR using "Current weight" template positioning
+
+## v1.0.5
+- added creatine shaker (5 scoops every 4 min, junk mode)
+- added junk no-food mode
+- fixed exercise menu not closing
+
+## v1.0.4
+- added junk mode for crew xp farming
 - added bulk buy food from shop
-- added junk mode for crew xp farming (no food option available)
+- added auto eating with calorie stall detection
+- fixed maintaining/deficit false positives
+
+## v1.0.3
 - added strength/hypertrophy/junk workout modes
-- added disconnect detection (stops macro + pings discord)
-- added type-a-word captcha auto-solving
-- added auto eating when maintaining detected (scrolls full inventory)
-- added calorie stall detection (stops eating when full)
-- added weight OCR reading via tesseract
-- fixed stamina stall detection (30 unchanged checks for hyper, 3 for junk)
-- fixed clicking speed (raw win32 SendInput for fastest possible clicks)
-- fixed hover bug on menus (nudge cursor before clicking)
-- fixed false positives on maintaining/deficit (double confirmation)
-- fixed exercise menu not closing (clicks X relative to header)
-- multi-scale image recognition with grayscale matching
-- persistent mss + cached templates for speed
-- configurable everything via GUI
-- discord webhook for all alerts + screenshots
+- raw win32 SendInput for fastest clicking
+- persistent mss + cached templates
+
+## v1.0.2
+- multi-scale image recognition
+- added discord webhook alerts + screenshots
+- added type-a-word captcha solving
+
+## v1.0.1
+- fixed hover bug on menus
+- fixed stamina stall detection
+- added zoom in/out when stuck
+
+## v1.0.0
+- initial release
 - made by starlingz
- 
-## vpushed changlog stuff and bug fixes on stall - Tue 08/04/2026 22:36 
-- pushed changlog stuff and bug fixes on stall 
- 
-## vjunk fix 2 - Tue 08/04/2026 23:14 
-- junk fix 2 
- 
-## vDefault is now 3 for stall - Tue 08/04/2026 23:24 
-- Default is now 3 seconds. 
- 
-## vfixed preworkout interacting w machine - Wed 08/05/2026  0:14 
--  
- 
-## vfixed cursor missing preworkout - Wed 08/05/2026  0:17 
--  
- 
-## vhopefully fixed junk regen bug - Wed 08/05/2026  1:04 
--  
- 
-## vuse stamina numbers to fix early regen and stall bug - Wed 08/05/2026  1:19 
--  
