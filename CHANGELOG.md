@@ -1,3 +1,6 @@
+## v1.0.14 - 08/05/2026 14:52
+- updated weight ocr
+
 ## v1.0.13 - 08/05/2026 14:19
 - added update notification
 
