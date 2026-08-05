@@ -25,3 +25,6 @@
 - configurable everything via GUI
 - discord webhook for all alerts + screenshots
 - made by starlingz
+ 
+## vpushed changlog stuff and bug fixes on stall - Tue 08/04/2026 22:36 
+- pushed changlog stuff and bug fixes on stall 

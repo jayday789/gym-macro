@@ -5,6 +5,8 @@ Core automation logic for the Roblox gym macro.
 Made by starlingz
 """
 
+__version__ = "pushed changlog stuff and bug fixes on stall"
+
 import time
 import random
 import re
@@ -1812,7 +1814,7 @@ class GymMacro:
                     self.send_discord_ping("🚨 Gym macro stopped: **Cutting** status detected!")
                     break
 
-                if not (is_junk_mode and self.cfg.junk_no_food) and self.is_maintaining():
+                if not (is_junk_mode and self.cfg.junk_no_food) and (time.time() - start_time) > 10 and self.is_maintaining():
                     self._handle_maintaining_flow()
                     self.log("Restarting macro after eating...")
                     self._sleep(3.0)  # Wait for game status to update after eating

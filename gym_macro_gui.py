@@ -13,9 +13,9 @@ from pathlib import Path
 from tkinter import ttk, filedialog, messagebox
 import ctypes
 
-from gym_macro_core import GymMacro, MacroConfig
+from gym_macro_core import GymMacro, MacroConfig, __version__
 
-APP_TITLE = "Gym Macro Controller — by starlingz"
+APP_TITLE = f"Gym Macro Controller v{__version__} — by starlingz"
 DEFAULT_TEMPLATE_DIR = Path(__file__).parent / "templates"
 SETTINGS_PATH = Path(__file__).parent / "gym_macro_settings.json"
 
