@@ -5,7 +5,7 @@ Core automation logic for the Roblox gym macro.
 Made by starlingz
 """
 
-__version__ = "junk fix 2"
+__version__ = "Default is now 3 for stall"
 
 import time
 import random
@@ -87,7 +87,7 @@ class MacroConfig:
     ping_message: str = "💪 Gym macro: reached **maintaining** state."
     keep_running_after_ping: bool = False  
     chosen_workout: str = "Any"  
-    stall_seconds: float = 15.0  
+    stall_seconds: float = 3.0  
     stall_fingerprint_tolerance: float = 3.0  
     prompt_search_timeout: float = 30.0  
     prompt_miss_unstick_after: int = 2  
@@ -1247,8 +1247,8 @@ class GymMacro:
                         # use tolerance of 1.0 for junk (much smaller changes per rep)
                         if drift <= 1.0:
                             stall_count_j += 1
-                            # junk barely moves stamina — need 8 unchanged (~8 seconds)
-                            if stall_count_j >= 8:
+                            # use stall_seconds config (checks every 1s)
+                            if stall_count_j >= int(self.cfg.stall_seconds):
                                 self.log("Stamina stalled in junk, getting off to regen.")
                                 return "low_stamina"
                         else:
@@ -1280,8 +1280,8 @@ class GymMacro:
                     drift = max(abs(a - b) for a, b in zip(fingerprint, last_fingerprint))
                     if drift <= self.cfg.stall_fingerprint_tolerance:
                         stall_count += 1
-                        # need 30+ consecutive unchanged checks before calling it a stall (~3 seconds)
-                        if stall_count >= 30:
+                        # checks every 100ms, use stall_seconds config
+                        if stall_count >= int(self.cfg.stall_seconds * 10):
                             # stamina didnt move for a while = done with set
                             if self.cfg.progress_report_enabled:
                                 weight = self._read_weight_from_screen()

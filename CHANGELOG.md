@@ -31,3 +31,6 @@
  
 ## vjunk fix 2 - Tue 08/04/2026 23:14 
 - junk fix 2 
+ 
+## vDefault is now 3 for stall - Tue 08/04/2026 23:24 
+- Default is now 3 seconds. 
