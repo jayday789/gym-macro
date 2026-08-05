@@ -1232,7 +1232,7 @@ class GymMacro:
 
                 now = time.time()
 
-                if now - last_vision_j >= 4.0:
+                if now - last_vision_j >= 1.0:
                     last_vision_j = now
                     screen = self.grab_screen()
                     # Check maintaining unless no-food mode
@@ -1244,8 +1244,8 @@ class GymMacro:
                         drift = max(abs(a - b) for a, b in zip(fingerprint, last_fingerprint_j))
                         if drift <= self.cfg.stall_fingerprint_tolerance:
                             stall_count_j += 1
-                            # need 30+ unchanged checks (~3 seconds) in junk mode
-                            if stall_count_j >= 30:
+                            # junk checks every 4s, so 3 unchanged = ~12 seconds
+                            if stall_count_j >= 3:
                                 self.log("Stamina stalled in junk, getting off to regen.")
                                 return "low_stamina"
                         else:
