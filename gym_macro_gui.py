@@ -182,23 +182,30 @@ class GymMacroGUI(tk.Tk):
             variable=self.junk_no_food,
         ).grid(row=2, column=0, columnspan=2, sticky="w", padx=4, pady=(0, 6))
 
+        self.one_rep_off = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            workout_select_frame,
+            text="One rep off (1 rep then regen, repeat)",
+            variable=self.one_rep_off,
+        ).grid(row=3, column=0, columnspan=2, sticky="w", padx=4, pady=(0, 6))
+
         self.junk_use_shaker = tk.BooleanVar(value=False)
         ttk.Checkbutton(
             workout_select_frame,
             text="Junk: Use creatine shaker every X minutes",
             variable=self.junk_use_shaker,
-        ).grid(row=3, column=0, columnspan=2, sticky="w", padx=4, pady=(0, 2))
+        ).grid(row=4, column=0, columnspan=2, sticky="w", padx=4, pady=(0, 2))
         self.junk_shaker_interval = tk.DoubleVar(value=5.0)
-        self._labeled_entry(workout_select_frame, "Shaker interval (min):", self.junk_shaker_interval, 4)
+        self._labeled_entry(workout_select_frame, "Shaker interval (min):", self.junk_shaker_interval, 5)
 
         self.junk_use_preworkout = tk.BooleanVar(value=False)
         ttk.Checkbutton(
             workout_select_frame,
             text="Use pre workout shaker every X minutes (all modes)",
             variable=self.junk_use_preworkout,
-        ).grid(row=5, column=0, columnspan=2, sticky="w", padx=4, pady=(0, 2))
+        ).grid(row=6, column=0, columnspan=2, sticky="w", padx=4, pady=(0, 2))
         self.junk_preworkout_interval = tk.DoubleVar(value=10.0)
-        self._labeled_entry(workout_select_frame, "Pre workout interval (min):", self.junk_preworkout_interval, 6)
+        self._labeled_entry(workout_select_frame, "Pre workout interval (min):", self.junk_preworkout_interval, 7)
 
         webhook_frame = ttk.LabelFrame(parent, text="Discord")
         webhook_frame.pack(fill="x", **pad)
@@ -403,6 +410,7 @@ class GymMacroGUI(tk.Tk):
             "chosen_workout": (self.workout_var, str),
             "workout_mode": (self.workout_mode_var, str),
             "junk_no_food": (self.junk_no_food, bool),
+            "one_rep_off": (self.one_rep_off, bool),
             "junk_use_shaker": (self.junk_use_shaker, bool),
             "junk_shaker_interval": (self.junk_shaker_interval, float),
             "junk_use_preworkout": (self.junk_use_preworkout, bool),
@@ -716,6 +724,7 @@ class GymMacroGUI(tk.Tk):
             chosen_workout=self.workout_var.get(),
             workout_mode=self.workout_mode_var.get(),
             junk_no_food=bool(self.junk_no_food.get()),
+            one_rep_off=bool(self.one_rep_off.get()),
             junk_use_shaker=bool(self.junk_use_shaker.get()),
             junk_shaker_interval=float(self.junk_shaker_interval.get()),
             junk_use_preworkout=bool(self.junk_use_preworkout.get()),

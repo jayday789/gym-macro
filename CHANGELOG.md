@@ -1,3 +1,6 @@
+## v1.0.11 - 08/05/2026 13:46
+- added one rep option
+
 ## v1.0.10 - 08/05/2026 01:34
 - fixed bug with updates
 

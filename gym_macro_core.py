@@ -5,7 +5,7 @@ Core automation logic for the Roblox gym macro.
 Made by starlingz
 """
 
-__version__ = "1.0.10"
+__version__ = "1.0.11"
 
 import time
 import random
@@ -99,7 +99,8 @@ class MacroConfig:
     rest_mouse_y_fraction: float = 0.9  
     close_menu_key: str = ""  
     key_inventory_toggle: str = "`"  
-    workout_mode: str = "Hypertrophy"  # Hypertrophy, Strength, or Junk
+    workout_mode: str = "Hypertrophy"  # Hypertrophy, Strength, Junk
+    one_rep_off: bool = False  # do 1 rep then get off to regen immediately
     junk_no_food: bool = False  # skip eating entirely in junk mode
     junk_use_shaker: bool = False  # use creatine shaker periodically
     junk_shaker_interval: float = 4.0  # minutes between shakes
@@ -1205,6 +1206,16 @@ class GymMacro:
                     self.log(f"{mode_label} not seen after 8s, starting anyway.")
             else:
                 self._sleep(2.0)
+
+        # One rep off mode: do 1 click then immediately get off
+        if self.cfg.one_rep_off:
+            self.send_input(self.cfg.key_workout_action, self.cfg.key_workout_hold)
+            self._sleep(0.5)
+            self._total_reps += 1
+            self._sets_done += 1
+            if self.cfg.progress_report_enabled and self._sets_done % self.cfg.progress_report_interval == 0:
+                self._send_progress_report()
+            return "low_stamina"
 
         # Junk mode: click fast, only stops on maintaining (unless no-food) or stamina stall.
         if is_junk:
