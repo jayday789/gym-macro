@@ -1,3 +1,6 @@
+## v1.0.15 - 08/05/2026 15:02
+- fixed tug of war blocking shaker prompt
+
 ## v1.0.14 - 08/05/2026 14:52
 - updated weight ocr
 

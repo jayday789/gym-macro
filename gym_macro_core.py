@@ -5,7 +5,7 @@ Core automation logic for the Roblox gym macro.
 Made by starlingz
 """
 
-__version__ = "1.0.14"
+__version__ = "1.0.15"
 
 import time
 import random
@@ -1082,21 +1082,41 @@ class GymMacro:
             self.log("  ⚠️ food_preworkout.png template not found!")
             return
         
-        # find circle position using template
+        # find circle position using template — pick rightmost to avoid tug of war
         empty_circle_tmpl = self.cfg.template_dir / "empty_circle.png"
         if self.cfg.shaker_circle_x > 0 and self.cfg.shaker_circle_y > 0:
             fifth_x = self.cfg.shaker_circle_x
             fifth_y = self.cfg.shaker_circle_y
         elif empty_circle_tmpl.exists():
-            match_e = self.find_on_screen(empty_circle_tmpl, custom_threshold=0.55)
-            if match_e:
-                fifth_x, fifth_y = match_e[0], match_e[1]
-                self.log(f"  Found circle at ({fifth_x}, {fifth_y})")
+            # find all circles and pick rightmost
+            screen = self.grab_screen()
+            screen_gray = cv2.cvtColor(screen, cv2.COLOR_BGR2GRAY)
+            tmpl_bgr, tmpl_gray = self._load_template(empty_circle_tmpl)
+            if tmpl_gray is not None:
+                th, tw = tmpl_gray.shape[:2]
+                result = cv2.matchTemplate(screen_gray, tmpl_gray, cv2.TM_CCOEFF_NORMED)
+                locations = np.where(result >= 0.55)
+                circles = []
+                for pt_y, pt_x in zip(*locations):
+                    cx, cy = pt_x + tw//2, pt_y + th//2
+                    too_close = any(abs(cx - fx) < tw//2 for fx, _ in circles)
+                    if not too_close:
+                        circles.append((cx, cy))
+                if circles:
+                    circles.sort(key=lambda c: c[0])
+                    m = self._monitor
+                    # pick rightmost circle
+                    fifth_x = m["left"] + circles[-1][0]
+                    fifth_y = m["top"] + circles[-1][1]
+                    self.log(f"  Found rightmost circle at ({fifth_x}, {fifth_y})")
+                else:
+                    m = self._monitor
+                    fifth_x = m["left"] + int(m["width"] * 0.6)
+                    fifth_y = m["top"] + int(m["height"] * 0.78)
             else:
                 m = self._monitor
                 fifth_x = m["left"] + int(m["width"] * 0.6)
                 fifth_y = m["top"] + int(m["height"] * 0.78)
-                self.log(f"  Circle not found, using fallback ({fifth_x}, {fifth_y})")
         else:
             m = self._monitor
             fifth_x = m["left"] + int(m["width"] * 0.6)
