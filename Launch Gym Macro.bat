@@ -21,6 +21,10 @@ if %errorlevel% neq 0 (
     echo Done!
 )
 
+:: Check for updates
+python -c "import requests,re;f=open('gym_macro_core.py','r',encoding='utf-8');local=re.search(r'__version__ = \"(.+?)\"',f.read()).group(1);f.close();r=requests.get('https://raw.githubusercontent.com/jayday789/gym-macro/main/gym_macro_core.py',timeout=5);remote=re.search(r'__version__ = \"(.+?)\"',r.text).group(1);print(f'  You have: v{local}');print(f'  Latest:   v{remote}');exit(0) if local==remote else print(f'  !! UPDATE AVAILABLE !! Download from: https://github.com/jayday789/gym-macro')" 2>nul
+echo.
+
 :: Check if Tesseract is available (for weight OCR)
 if exist "%~dp0Tesseract-OCR\tesseract.exe" (
     echo Tesseract found (local)

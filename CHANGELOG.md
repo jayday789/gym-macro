@@ -1,3 +1,6 @@
+## v1.0.13 - 08/05/2026 14:19
+- added update notification
+
 ## v1.0.12 - 08/05/2026 14:09
 - stall now 1 second
 
