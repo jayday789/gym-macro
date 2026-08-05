@@ -5,7 +5,7 @@ Core automation logic for the Roblox gym macro.
 Made by starlingz
 """
 
-__version__ = "fixed preworkout interacting w machine"
+__version__ = "fixed cursor missing preworkout"
 
 import time
 import random
@@ -1081,10 +1081,21 @@ class GymMacro:
             self.log("  ⚠️ food_preworkout.png template not found!")
             return
         
-        # find circle position (same logic as creatine)
+        # find circle position using template
+        empty_circle_tmpl = self.cfg.template_dir / "empty_circle.png"
         if self.cfg.shaker_circle_x > 0 and self.cfg.shaker_circle_y > 0:
             fifth_x = self.cfg.shaker_circle_x
             fifth_y = self.cfg.shaker_circle_y
+        elif empty_circle_tmpl.exists():
+            match_e = self.find_on_screen(empty_circle_tmpl, custom_threshold=0.55)
+            if match_e:
+                fifth_x, fifth_y = match_e[0], match_e[1]
+                self.log(f"  Found circle at ({fifth_x}, {fifth_y})")
+            else:
+                m = self._monitor
+                fifth_x = m["left"] + int(m["width"] * 0.6)
+                fifth_y = m["top"] + int(m["height"] * 0.78)
+                self.log(f"  Circle not found, using fallback ({fifth_x}, {fifth_y})")
         else:
             m = self._monitor
             fifth_x = m["left"] + int(m["width"] * 0.6)

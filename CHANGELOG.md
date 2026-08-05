@@ -37,3 +37,6 @@
  
 ## vfixed preworkout interacting w machine - Wed 08/05/2026  0:14 
 -  
+ 
+## vfixed cursor missing preworkout - Wed 08/05/2026  0:17 
+-  
