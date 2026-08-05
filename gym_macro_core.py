@@ -5,7 +5,7 @@ Core automation logic for the Roblox gym macro.
 Made by starlingz
 """
 
-__version__ = "Default is now 3 for stall"
+__version__ = "fixed preworkout interacting w machine"
 
 import time
 import random
@@ -72,10 +72,10 @@ class MacroConfig:
     template_dir: Path = Path(__file__).parent / "templates"
     monitor_index: int = 1  
     key_interact: str = "e"
-    key_interact_hold: float = 0.0  
-    key_workout_action: str = "space"
+    key_interact_hold: float = 1.0  
+    key_workout_action: str = "lmb"
     key_workout_hold: float = 0.0
-    key_exit_machine: str = "e"
+    key_exit_machine: str = "space"
     key_exit_hold: float = 0.0
     click_prompt_instead_of_key: bool = False  
     also_press_key_when_clicking: bool = True  
@@ -87,7 +87,7 @@ class MacroConfig:
     ping_message: str = "💪 Gym macro: reached **maintaining** state."
     keep_running_after_ping: bool = False  
     chosen_workout: str = "Any"  
-    stall_seconds: float = 3.0  
+    stall_seconds: float = 2.0  
     stall_fingerprint_tolerance: float = 3.0  
     prompt_search_timeout: float = 30.0  
     prompt_miss_unstick_after: int = 2  
@@ -1065,6 +1065,12 @@ class GymMacro:
         """same as creatine shaker but only 1 scoop of pre workout"""
         self.log("⚡ Using pre workout shaker...")
         
+        # make sure we're off the machine and away from prompts
+        self.send_input(self.cfg.key_exit_machine, self.cfg.key_exit_hold)
+        self._sleep(0.5)
+        self.rest_mouse()
+        self._sleep(0.3)
+        
         # select shaker from hotbar
         self.send_input("1")
         self._sleep(1.5)
@@ -1244,8 +1250,8 @@ class GymMacro:
                     fingerprint = self.stamina_fingerprint()
                     if fingerprint is not None and last_fingerprint_j is not None:
                         drift = max(abs(a - b) for a, b in zip(fingerprint, last_fingerprint_j))
-                        # use tolerance of 1.0 for junk (much smaller changes per rep)
-                        if drift <= 1.0:
+                        # use tolerance of 1.5 for junk (smaller changes per rep than normal)
+                        if drift <= 1.5:
                             stall_count_j += 1
                             # use stall_seconds config (checks every 1s)
                             if stall_count_j >= int(self.cfg.stall_seconds):

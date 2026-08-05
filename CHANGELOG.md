@@ -34,3 +34,6 @@
  
 ## vDefault is now 3 for stall - Tue 08/04/2026 23:24 
 - Default is now 3 seconds. 
+ 
+## vfixed preworkout interacting w machine - Wed 08/05/2026  0:14 
+-  
