@@ -1277,8 +1277,8 @@ class GymMacro:
                     drift = max(abs(a - b) for a, b in zip(fingerprint, last_fingerprint))
                     if drift <= self.cfg.stall_fingerprint_tolerance:
                         stall_count += 1
-                        # need 10+ consecutive unchanged checks before calling it a stall (~1 second)
-                        if stall_count >= 10:
+                        # need 30+ consecutive unchanged checks before calling it a stall (~3 seconds)
+                        if stall_count >= 30:
                             # stamina didnt move for a while = done with set
                             if self.cfg.progress_report_enabled:
                                 weight = self._read_weight_from_screen()
