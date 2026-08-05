@@ -5,7 +5,7 @@ Core automation logic for the Roblox gym macro.
 Made by starlingz
 """
 
-__version__ = "1.0.11"
+__version__ = "1.0.12"
 
 import time
 import random
@@ -87,7 +87,7 @@ class MacroConfig:
     ping_message: str = "💪 Gym macro: reached **maintaining** state."
     keep_running_after_ping: bool = False  
     chosen_workout: str = "Any"  
-    stall_seconds: float = 2.0  
+    stall_seconds: float = 1.0  
     stall_fingerprint_tolerance: float = 3.0  
     prompt_search_timeout: float = 30.0  
     prompt_miss_unstick_after: int = 2  

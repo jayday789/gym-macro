@@ -1,3 +1,6 @@
+## v1.0.12 - 08/05/2026 14:09
+- stall now 1 second
+
 ## v1.0.11 - 08/05/2026 13:46
 - added one rep option
 
