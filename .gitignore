@@ -2,3 +2,4 @@ __pycache__/
 *.pyc
 debug/
 gym_macro_settings.json
+push_update.bat
