@@ -5,7 +5,7 @@ Core automation logic for the Roblox gym macro.
 Made by starlingz
 """
 
-__version__ = ""
+__version__ = "1.0.10"
 
 import time
 import random
