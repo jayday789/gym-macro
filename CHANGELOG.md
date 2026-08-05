@@ -43,3 +43,6 @@
  
 ## vhopefully fixed junk regen bug - Wed 08/05/2026  1:04 
 -  
+ 
+## vuse stamina numbers to fix early regen and stall bug - Wed 08/05/2026  1:19 
+-  

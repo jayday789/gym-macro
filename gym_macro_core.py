@@ -5,7 +5,7 @@ Core automation logic for the Roblox gym macro.
 Made by starlingz
 """
 
-__version__ = "hopefully fixed junk regen bug"
+__version__ = "use stamina numbers to fix early regen and stall bug"
 
 import time
 import random
@@ -1169,7 +1169,9 @@ class GymMacro:
         start_time = time.time()
         last_fingerprint = None
         last_vision_check = 0
-        stall_count = 0  # how many consecutive unchanged checks
+        stall_count = 0
+        last_stam_number = -1
+        stam_same_count = 0  # how many consecutive unchanged checks
 
         # Check if this is a forearm workout (needs delay between clicks)
         is_forearm = "forearm" in self.cfg.chosen_workout.lower()
@@ -1210,6 +1212,8 @@ class GymMacro:
             last_fingerprint_j = None
             last_vision_j = 0
             stall_count_j = 0
+            last_stam_number = -1
+            stam_same_count = 0
 
             # Check if shaker timer has elapsed (works across regen cycles)
             if self.cfg.junk_use_shaker and (time.time() - self._last_shaker_use) >= self.cfg.junk_shaker_interval * 60:
@@ -1254,24 +1258,41 @@ class GymMacro:
                 if now - last_vision_j >= 1.0:
                     last_vision_j = now
                     screen = self.grab_screen()
-                    # Check maintaining unless no-food mode
-                    if not self.cfg.junk_no_food and self.is_maintaining(screen=screen):
+                    # skip maintaining check for first 10s of each set
+                    if not self.cfg.junk_no_food and (time.time() - start_time) > 10 and self.is_maintaining(screen=screen):
                         return "maintaining"
-                    # junk uses less stamina per rep — use tighter tolerance to detect tiny changes
-                    fingerprint = self.stamina_fingerprint()
-                    if fingerprint is not None and last_fingerprint_j is not None:
-                        drift = max(abs(a - b) for a, b in zip(fingerprint, last_fingerprint_j))
-                        # junk reps are slow — use tolerance 2.0 and minimum 5 seconds
-                        if drift <= 2.0:
-                            stall_count_j += 1
-                            # minimum 5 unchanged checks (5 seconds) for junk
-                            if stall_count_j >= max(5, int(self.cfg.stall_seconds)):
-                                self.log("Stamina stalled in junk, getting off to regen.")
-                                return "low_stamina"
+                    
+                    # read stamina number via OCR — if same number for 3 seconds, regen
+                    h, w = screen.shape[:2]
+                    # stamina text is bottom-left
+                    stam_roi = screen[int(h*0.88):int(h*0.98), 0:int(w*0.15)]
+                    try:
+                        import pytesseract as _pyt
+                        _local = Path(__file__).parent / "Tesseract-OCR" / "tesseract.exe"
+                        if _local.exists():
+                            _pyt.pytesseract.tesseract_cmd = str(_local)
                         else:
-                            stall_count_j = 0
-                    if fingerprint is not None:
-                        last_fingerprint_j = fingerprint
+                            _pyt.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+                        gray = cv2.cvtColor(stam_roi, cv2.COLOR_BGR2GRAY)
+                        _, thresh = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY)
+                        raw = _pyt.image_to_string(thresh, config='--psm 7')
+                        # find number before the slash like "24/100" or just "24"
+                        stam_match = re.search(r'(\d+)\s*/\s*\d+', raw)
+                        if not stam_match:
+                            stam_match = re.search(r'(\d+)', raw)
+                        if stam_match:
+                            current_stam = int(stam_match.group(1))
+                            if current_stam == last_stam_number:
+                                stam_same_count += 1
+                            else:
+                                stam_same_count = 0
+                                last_stam_number = current_stam
+                            # same number for 3 checks (3 seconds) = stamina stopped
+                            if stam_same_count >= 3:
+                                self.log(f"Stamina stuck at {current_stam} for 3s, getting off to regen.")
+                                return "low_stamina"
+                    except Exception:
+                        pass
 
         while True:
             self._check_stop()
@@ -1287,43 +1308,50 @@ class GymMacro:
 
             # check stamina every click
             now = time.time()
-            if now - last_vision_check >= 0.1:
+            if now - last_vision_check >= 1.0:
                 last_vision_check = now
                 screen = self.grab_screen()
 
-                # Stamina stall check only — get off immediately if stamina stopped
-                fingerprint = self.stamina_fingerprint(screen=screen)
-                if fingerprint is not None and last_fingerprint is not None:
-                    drift = max(abs(a - b) for a, b in zip(fingerprint, last_fingerprint))
-                    if drift <= self.cfg.stall_fingerprint_tolerance:
-                        stall_count += 1
-                        # checks every 100ms, use stall_seconds config
-                        if stall_count >= int(self.cfg.stall_seconds * 10):
-                            # stamina didnt move for a while = done with set
+                # read stamina number — if same for 3 seconds, get off
+                h, w = screen.shape[:2]
+                stam_roi = screen[int(h*0.88):int(h*0.98), 0:int(w*0.15)]
+                try:
+                    import pytesseract as _pyt
+                    _local = Path(__file__).parent / "Tesseract-OCR" / "tesseract.exe"
+                    if _local.exists():
+                        _pyt.pytesseract.tesseract_cmd = str(_local)
+                    else:
+                        _pyt.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+                    gray = cv2.cvtColor(stam_roi, cv2.COLOR_BGR2GRAY)
+                    _, thresh = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY)
+                    raw = _pyt.image_to_string(thresh, config='--psm 7')
+                    stam_match = re.search(r'(\d+)\s*/\s*\d+', raw)
+                    if not stam_match:
+                        stam_match = re.search(r'(\d+)', raw)
+                    if stam_match:
+                        current_stam = int(stam_match.group(1))
+                        if current_stam == last_stam_number:
+                            stam_same_count += 1
+                        else:
+                            stam_same_count = 0
+                            last_stam_number = current_stam
+                            self._total_reps += 1  # stamina dropped = rep done
+                        if stam_same_count >= 3:
+                            # stamina stuck for 3s — done with set
                             if self.cfg.progress_report_enabled:
                                 weight = self._read_weight_from_screen()
                                 if weight:
                                     self._last_weight_kg = weight
                                 self._sets_done += 1
-                                # use the higher of detected reps vs sets * reps_per_set
                                 min_reps = self._sets_done * self.cfg.reps_per_set
                                 if self._total_reps < min_reps:
                                     self._total_reps = min_reps
                                 if self._sets_done % self.cfg.progress_report_interval == 0:
                                     self._send_progress_report()
-                            full_template = self.cfg.template_dir / "full_stamina.png"
-                            if full_template.exists() and self.find_on_screen(full_template, screen=screen):
-                                self.log("Stamina full, re-approaching machine...")
-                                return "low_stamina"
-                            self.log("Stamina stopped dropping, getting off to regen.")
+                            self.log(f"Stamina stuck at {current_stam} for 3s, getting off to regen.")
                             return "low_stamina"
-                    else:
-                        # stamina went down = still working out, count a rep
-                        stall_count = 0
-                        self._total_reps += 1
-                
-                if fingerprint is not None:
-                    last_fingerprint = fingerprint
+                except Exception:
+                    pass
 
                 # Still check captcha since it blocks input
                 word_prompts = self.type_word_prompt_templates()
