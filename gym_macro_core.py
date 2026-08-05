@@ -1244,8 +1244,8 @@ class GymMacro:
                         drift = max(abs(a - b) for a, b in zip(fingerprint, last_fingerprint_j))
                         if drift <= self.cfg.stall_fingerprint_tolerance:
                             stall_count_j += 1
-                            # junk checks every 4s, so 3 unchanged = ~12 seconds
-                            if stall_count_j >= 3:
+                            # junk barely moves stamina — need 8 unchanged (~8 seconds)
+                            if stall_count_j >= 8:
                                 self.log("Stamina stalled in junk, getting off to regen.")
                                 return "low_stamina"
                         else:
