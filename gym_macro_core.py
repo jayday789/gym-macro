@@ -5,7 +5,7 @@ Core automation logic for the Roblox gym macro.
 Made by starlingz
 """
 
-__version__ = "1.0.15"
+__version__ = "1.0.16"
 
 import time
 import random
@@ -1726,11 +1726,11 @@ class GymMacro:
             # Crop below the template — the bold number
             screen = self.grab_screen()
             h, w = screen.shape[:2]
-            # number is bigger text, need wider and taller crop
+            # number is bigger text, need wider crop
             roi_y1 = min(y + 5, h - 5)
             roi_y2 = min(y + 80, h)
-            roi_x1 = max(x - 120, 0)
-            roi_x2 = min(x + 120, w)
+            roi_x1 = max(x - 150, 0)
+            roi_x2 = min(x + 150, w)
             roi = screen[roi_y1:roi_y2, roi_x1:roi_x2]
             
             gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
