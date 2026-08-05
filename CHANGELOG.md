@@ -40,3 +40,6 @@
  
 ## vfixed cursor missing preworkout - Wed 08/05/2026  0:17 
 -  
+ 
+## vhopefully fixed junk regen bug - Wed 08/05/2026  1:04 
+-  

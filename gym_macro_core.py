@@ -5,7 +5,7 @@ Core automation logic for the Roblox gym macro.
 Made by starlingz
 """
 
-__version__ = "fixed cursor missing preworkout"
+__version__ = "hopefully fixed junk regen bug"
 
 import time
 import random
@@ -1261,11 +1261,11 @@ class GymMacro:
                     fingerprint = self.stamina_fingerprint()
                     if fingerprint is not None and last_fingerprint_j is not None:
                         drift = max(abs(a - b) for a, b in zip(fingerprint, last_fingerprint_j))
-                        # use tolerance of 1.5 for junk (smaller changes per rep than normal)
-                        if drift <= 1.5:
+                        # junk reps are slow — use tolerance 2.0 and minimum 5 seconds
+                        if drift <= 2.0:
                             stall_count_j += 1
-                            # use stall_seconds config (checks every 1s)
-                            if stall_count_j >= int(self.cfg.stall_seconds):
+                            # minimum 5 unchanged checks (5 seconds) for junk
+                            if stall_count_j >= max(5, int(self.cfg.stall_seconds)):
                                 self.log("Stamina stalled in junk, getting off to regen.")
                                 return "low_stamina"
                         else:
