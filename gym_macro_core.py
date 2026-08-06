@@ -5,7 +5,7 @@ Core automation logic for the Roblox gym macro.
 Made by starlingz
 """
 
-__version__ = "1.0.17"
+__version__ = "1.0.18"
 
 import time
 import random
@@ -608,34 +608,50 @@ class GymMacro:
         return sorted(f for f in set(found) if f.name not in exclude)
 
     def close_exercise_menu(self):
-        # Try clicking the X template
-        close_templates = self.close_menu_templates()
-        if close_templates:
-            for c_path in close_templates:
-                if self.click_template(c_path, label=f"close button '{c_path.name}'"):
+        # find menu header first to know where the menu is
+        menu_templates = self.select_exercise_menu_templates()
+        menu_match = None
+        for m_path in menu_templates:
+            menu_match = self.find_on_screen(m_path)
+            if menu_match:
+                break
+        
+        if menu_match:
+            x, y, conf = menu_match
+            # try clicking X at multiple offsets from header (different menu sizes)
+            for offset_x, offset_y in [(200, -5), (250, -5), (180, 0), (220, -10), (160, 5)]:
+                self.move_and_click(x + offset_x, y + offset_y)
+                self._sleep(0.3)
+                if not self._menu_still_open():
                     self.rest_mouse()
                     return True
-
-        # Fallback: find the menu header and click the X relative to it (top-right corner)
-        menu_templates = self.select_exercise_menu_templates()
-        for m_path in menu_templates:
-            match = self.find_on_screen(m_path)
-            if match:
-                x, y, conf = match
-                # The X button is in the top-right of the menu popup
-                # Click to the right of the header text
-                x_btn_x = x + 250  # Offset right toward the X
-                x_btn_y = y - 10   # Slightly above center of header
-                self.log(f"Clicking menu X at ({x_btn_x}, {x_btn_y})")
-                self.move_and_click(x_btn_x, x_btn_y)
+        
+        # try X template directly
+        close_templates = self.close_menu_templates()
+        for c_path in close_templates:
+            if self.click_template(c_path):
+                self._sleep(0.3)
                 self.rest_mouse()
                 return True
-
-        # Last fallback: press close key
-        close_key = self.cfg.close_menu_key.strip() or self.cfg.key_exit_machine
-        self.log(f"Pressing close key '{close_key}' as fallback...")
-        self.send_input(close_key, self.cfg.key_exit_hold)
-        return True
+        
+        # last resort: try clicking where X typically is (top right of screen center area)
+        m = self._monitor
+        for attempt in range(3):
+            # X is usually top-right of a centered popup
+            click_x = m["left"] + int(m["width"] * 0.58) + (attempt * 20)
+            click_y = m["top"] + int(m["height"] * 0.25)
+            pydirectinput.moveTo(click_x + 2, click_y + 2)
+            time.sleep(0.02)
+            pydirectinput.moveTo(click_x, click_y)
+            time.sleep(0.06)
+            pydirectinput.click()
+            self._sleep(0.3)
+            if not self._menu_still_open():
+                self.rest_mouse()
+                return True
+        
+        self.log("⚠️ Could not close exercise menu!")
+        return False
 
     def _menu_still_open(self, screen=None):
         menu_templates = self.select_exercise_menu_templates()

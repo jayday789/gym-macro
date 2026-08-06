@@ -1,3 +1,6 @@
+## v1.0.18 - 08/05/2026 20:11
+- hopefully fixed menu bug
+
 ## v1.0.17 - 08/05/2026 16:28
 - shouldve fixed one rep mode weight reading
 
