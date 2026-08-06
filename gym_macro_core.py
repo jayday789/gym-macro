@@ -5,7 +5,7 @@ Core automation logic for the Roblox gym macro.
 Made by starlingz
 """
 
-__version__ = "1.0.19"
+__version__ = "1.0.20"
 
 import time
 import random
@@ -1344,11 +1344,6 @@ class GymMacro:
                                 return "low_stamina"
                     except Exception:
                         pass
-                    
-                    # fallback: if OCR keeps failing, use 1s timer
-                    if (time.time() - start_time) > 1:
-                        self.log("Junk fallback timer (1s), getting off to regen.")
-                        return "low_stamina"
 
         while True:
             self._check_stop()

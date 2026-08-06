@@ -1,3 +1,6 @@
+## v1.0.20 - 08/06/2026 11:53
+- accidentally left a fallback timer in
+
 ## v1.0.19 - 08/06/2026 11:51
 - widened stamina crop
 
