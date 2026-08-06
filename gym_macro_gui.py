@@ -455,9 +455,48 @@ class GymMacroGUI(tk.Tk):
     def _selected_monitor_index(self):
         val = self.monitor_choice.get()
         try:
-            return int(val.split(":")[0])
-        except (ValueError, IndexError):
+            idx = int(val.split(":")[0].strip())
+            return idx
+        except (ValueError, IndexError, AttributeError):
             return 1
+
+    def _load_settings(self, silent=False):
+        if not SETTINGS_PATH.exists():
+            return
+        try:
+            data = json.loads(SETTINGS_PATH.read_text())
+        except Exception:
+            return
+
+        vars_map = self._settings_vars()
+        for name, value in data.items():
+            if name in vars_map:
+                var, _type = vars_map[name]
+                try:
+                    var.set(value)
+                except Exception:
+                    pass
+
+        # Re-validate monitor choice against available monitors
+        self._refresh_monitors()
+        current = self.monitor_choice.get()
+        values = list(self.monitor_dropdown["values"])
+        if current not in values and values:
+            # Try to match by index number from saved string
+            try:
+                saved_idx = int(current.split(":")[0].strip())
+                match = next((v for v in values if v.startswith(f"{saved_idx}:")), None)
+                if match:
+                    self.monitor_choice.set(match)
+                else:
+                    self.monitor_choice.set(values[1] if len(values) > 1 else values[0])
+            except (ValueError, IndexError):
+                self.monitor_choice.set(values[1] if len(values) > 1 else values[0])
+
+        self._refresh_template_status()
+        self._refresh_workout_dropdown_list()
+        if not silent:
+            self.settings_status.config(text=f"Loaded from {SETTINGS_PATH.name}")
 
     def _settings_vars(self):
         return {
@@ -520,28 +559,6 @@ class GymMacroGUI(tk.Tk):
         except Exception as e:
             if not silent:
                 messagebox.showerror("Save failed", str(e))
-
-    def _load_settings(self, silent=False):
-        if not SETTINGS_PATH.exists():
-            return
-        try:
-            data = json.loads(SETTINGS_PATH.read_text())
-        except Exception:
-            return
-
-        vars_map = self._settings_vars()
-        for name, value in data.items():
-            if name in vars_map:
-                var, _type = vars_map[name]
-                try:
-                    var.set(value)
-                except Exception:
-                    pass
-
-        self._refresh_template_status()
-        self._refresh_workout_dropdown_list()
-        if not silent:
-            self.settings_status.config(text=f"Loaded from {SETTINGS_PATH.name}")
 
     def _labeled_entry(self, parent, label, var, row, width=20):
         ttk.Label(parent, text=label).grid(row=row, column=0, sticky="w", padx=4, pady=4)

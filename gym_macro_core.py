@@ -5,7 +5,7 @@ Core automation logic for the Roblox gym macro.
 Made by starlingz
 """
 
-__version__ = "1.1"
+__version__ = "1.1.1"
 
 import time
 import random
@@ -992,11 +992,11 @@ class GymMacro:
             
             circles.sort(key=lambda c: c[0])
             m = self._monitor
-            screen_center_x = m["width"] // 2
-            right_circles = [c for c in circles if c[0] > screen_center_x]
-            if right_circles:
-                fifth_x, fifth_y = right_circles[-1]
+            # Pick the 7th circle (last of 7 shaker circles, sorted left to right)
+            if len(circles) >= 7:
+                fifth_x, fifth_y = circles[6]
             else:
+                # Less than 7 found, use rightmost available
                 fifth_x, fifth_y = circles[-1]
             # Convert to absolute coords
             fifth_x = m["left"] + fifth_x
@@ -1317,21 +1317,21 @@ class GymMacro:
                         return "maintaining"
                     
                     # detect stamina stall via pixel comparison (no OCR needed)
-                    # compare bottom-left region between frames - if unchanged, stamina stopped
+                    # crop just the stamina bar area (very bottom-left strip)
                     h, w = screen.shape[:2]
-                    stam_roi = screen[int(h*0.75):h, 0:int(w*0.25)]
+                    stam_roi = screen[int(h*0.92):h, 0:int(w*0.30)]
                     gray_roi = cv2.cvtColor(stam_roi, cv2.COLOR_BGR2GRAY)
                     
-                    if last_stam_frame is not None:
+                    if last_stam_frame is not None and gray_roi.shape == last_stam_frame.shape:
                         diff = cv2.absdiff(gray_roi, last_stam_frame)
                         change = diff.mean()
-                        if change < 1.0:
+                        if change < 2.0:
                             # pixels barely changed = stamina stopped moving
                             stam_same_count += 1
                         else:
                             stam_same_count = 0
                         
-                        if stam_same_count >= 3:
+                        if stam_same_count >= 5:
                             self.log(f"Stamina stopped moving (pixel diff {change:.2f}), getting off to regen.")
                             return "low_stamina"
                     

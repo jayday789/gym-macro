@@ -1,3 +1,6 @@
+## v1.1.1 - 08/06/2026 12:54
+- changed junk stall and fixed monitor issues and shaker
+
 ## v1.1 - 08/06/2026 12:34
 - updated gui and fixed junk stamina detection
 
