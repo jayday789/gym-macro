@@ -1,3 +1,6 @@
+## v1.0.22 - 08/06/2026 12:08
+- made indicator 1 second instead of 8
+
 ## v1.0.21 - 08/06/2026 11:57
 - hopefully fixed junk jumping early
 

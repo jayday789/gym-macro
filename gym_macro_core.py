@@ -5,7 +5,7 @@ Core automation logic for the Roblox gym macro.
 Made by starlingz
 """
 
-__version__ = "1.0.21"
+__version__ = "1.0.22"
 
 import time
 import random
@@ -1230,7 +1230,7 @@ class GymMacro:
 
             if mode_tmpl.exists():
                 self.log(f"Waiting for {mode_label} indicator...")
-                match = self.wait_for_template(mode_tmpl, timeout=8, label=mode_label)
+                match = self.wait_for_template(mode_tmpl, timeout=1, label=mode_label)
                 if match:
                     self.log(f"{mode_label} detected, starting workout.")
                     # Read weight — we're on the machine and panel is visible
