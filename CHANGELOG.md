@@ -1,3 +1,6 @@
+## v1.1 - 08/06/2026 12:34
+- updated gui and fixed junk stamina detection
+
 ## v1.0.23 - 08/06/2026 12:13
 - changed stall to hopefully work but makes it 3 seconds
 

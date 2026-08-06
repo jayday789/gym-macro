@@ -39,8 +39,8 @@ class GymMacroGUI(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title(APP_TITLE)
-        self.geometry("640x760")
-        self.minsize(560, 640)
+        self.geometry("660x820")
+        self.minsize(580, 680)
 
         self.log_queue = queue.Queue()
         self.stop_event = threading.Event()
@@ -125,14 +125,18 @@ class GymMacroGUI(tk.Tk):
     def _build_settings_tab(self, parent):
         pad = {"padx": 8, "pady": 6}
 
+        # ═══════════════════════════════════════════════════════
+        # KEYBINDS — what keys the macro presses in-game
+        # ═══════════════════════════════════════════════════════
         keys_frame = ttk.LabelFrame(parent, text="Keybinds")
         keys_frame.pack(fill="x", **pad)
 
         ttk.Label(
             keys_frame,
-            text="Type a keyboard key (e.g. e, space, f) or a mouse button: lmb / rmb / mmb.\n"
-                 "Hold (s) = seconds to hold it down. Leave at 0 for a quick tap.",
-            foreground="#666",
+            text="Set these to match your in-game keybinds. Use: e, space, f, lmb, rmb, mmb.\n"
+                 "Hold (s) = how long to hold the key. 0 = quick tap, 0.5 = half-second hold.",
+            foreground="#555",
+            wraplength=550,
         ).grid(row=0, column=0, columnspan=4, sticky="w", padx=4, pady=(4, 8))
 
         ttk.Label(keys_frame, text="Key/Button").grid(row=1, column=1, padx=4)
@@ -145,9 +149,9 @@ class GymMacroGUI(tk.Tk):
         self.key_exit = tk.StringVar(value="e")
         self.key_exit_hold = tk.DoubleVar(value=0.5)
 
-        self._keybind_row(keys_frame, "Interact key:", self.key_interact, self.key_interact_hold, 2)
-        self._keybind_row(keys_frame, "Workout action key:", self.key_workout, self.key_workout_hold, 3)
-        self._keybind_row(keys_frame, "Exit machine key:", self.key_exit, self.key_exit_hold, 4)
+        self._keybind_row(keys_frame, "Interact (get on machine):", self.key_interact, self.key_interact_hold, 2)
+        self._keybind_row(keys_frame, "Workout action (rep key):", self.key_workout, self.key_workout_hold, 3)
+        self._keybind_row(keys_frame, "Exit machine (get off):", self.key_exit, self.key_exit_hold, 4)
 
         self.click_prompt = tk.BooleanVar(value=False)
         self.also_press_when_clicking = tk.BooleanVar(value=True)
@@ -162,193 +166,259 @@ class GymMacroGUI(tk.Tk):
             variable=self.also_press_when_clicking,
         ).grid(row=6, column=0, columnspan=4, sticky="w", padx=24, pady=(0, 6))
 
-        workout_select_frame = ttk.LabelFrame(parent, text="Target Assignment")
+        # ═══════════════════════════════════════════════════════
+        # WORKOUT — what exercise and mode to use
+        # ═══════════════════════════════════════════════════════
+        workout_select_frame = ttk.LabelFrame(parent, text="Workout")
         workout_select_frame.pack(fill="x", **pad)
-        
-        ttk.Label(workout_select_frame, text="Active Selection:").grid(row=0, column=0, sticky="w", padx=4, pady=6)
+
+        ttk.Label(
+            workout_select_frame,
+            text="Pick which exercise to do and what training mode. 'Any' = first machine found.",
+            foreground="#555",
+            wraplength=550,
+        ).grid(row=0, column=0, columnspan=2, sticky="w", padx=4, pady=(4, 6))
+
+        ttk.Label(workout_select_frame, text="Exercise:").grid(row=1, column=0, sticky="w", padx=4, pady=4)
         self.workout_dropdown = ttk.Combobox(workout_select_frame, textvariable=self.workout_var, state="readonly", width=40)
-        self.workout_dropdown.grid(row=0, column=1, sticky="w", padx=4, pady=6)
+        self.workout_dropdown.grid(row=1, column=1, sticky="w", padx=4, pady=4)
         self._refresh_workout_dropdown_list()
 
-        ttk.Label(workout_select_frame, text="Workout Mode:").grid(row=1, column=0, sticky="w", padx=4, pady=6)
+        ttk.Label(workout_select_frame, text="Mode:").grid(row=2, column=0, sticky="w", padx=4, pady=4)
         self.workout_mode_var = tk.StringVar(value="Hypertrophy")
         self.workout_mode_dropdown = ttk.Combobox(workout_select_frame, textvariable=self.workout_mode_var, state="readonly", width=20, values=["Hypertrophy", "Strength", "Junk"])
-        self.workout_mode_dropdown.grid(row=1, column=1, sticky="w", padx=4, pady=6)
-
-        self.junk_no_food = tk.BooleanVar(value=False)
-        ttk.Checkbutton(
-            workout_select_frame,
-            text="Junk: No food (never eat, just farm XP indefinitely)",
-            variable=self.junk_no_food,
-        ).grid(row=2, column=0, columnspan=2, sticky="w", padx=4, pady=(0, 6))
+        self.workout_mode_dropdown.grid(row=2, column=1, sticky="w", padx=4, pady=4)
 
         self.one_rep_off = tk.BooleanVar(value=False)
         ttk.Checkbutton(
             workout_select_frame,
-            text="One rep off (1 rep then regen, repeat)",
+            text="One rep off (does 1 rep then immediately regens)",
             variable=self.one_rep_off,
-        ).grid(row=3, column=0, columnspan=2, sticky="w", padx=4, pady=(0, 6))
+        ).grid(row=3, column=0, columnspan=2, sticky="w", padx=4, pady=(6, 2))
+
+        self.junk_no_food = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            workout_select_frame,
+            text="Junk: skip eating entirely (never eats, just farms XP indefinitely)",
+            variable=self.junk_no_food,
+        ).grid(row=4, column=0, columnspan=2, sticky="w", padx=4, pady=2)
+
+        self.keep_running = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            workout_select_frame,
+            text="Keep running after 'maintaining' (normally the macro stops when you hit maintaining)",
+            variable=self.keep_running,
+        ).grid(row=5, column=0, columnspan=2, sticky="w", padx=4, pady=(2, 6))
+
+        # ═══════════════════════════════════════════════════════
+        # SHAKERS & FOOD — auto creatine, pre workout, eating
+        # ═══════════════════════════════════════════════════════
+        shaker_frame = ttk.LabelFrame(parent, text="Shakers & Food")
+        shaker_frame.pack(fill="x", **pad)
+
+        ttk.Label(
+            shaker_frame,
+            text="Auto-drinks shakers on a timer. Creatine = 5 scoops every 4 min, Pre workout = 1 scoop every 10 min.",
+            foreground="#555",
+            wraplength=550,
+        ).grid(row=0, column=0, columnspan=2, sticky="w", padx=4, pady=(4, 6))
 
         self.junk_use_shaker = tk.BooleanVar(value=False)
         ttk.Checkbutton(
-            workout_select_frame,
-            text="Junk: Use creatine shaker every X minutes",
+            shaker_frame,
+            text="Use creatine shaker (auto-drinks 5 scoops on a timer)",
             variable=self.junk_use_shaker,
-        ).grid(row=4, column=0, columnspan=2, sticky="w", padx=4, pady=(0, 2))
+        ).grid(row=1, column=0, columnspan=2, sticky="w", padx=4, pady=2)
         self.junk_shaker_interval = tk.DoubleVar(value=5.0)
-        self._labeled_entry(workout_select_frame, "Shaker interval (min):", self.junk_shaker_interval, 5)
+        self._labeled_entry(shaker_frame, "  Creatine interval (min):", self.junk_shaker_interval, 2)
 
         self.junk_use_preworkout = tk.BooleanVar(value=False)
         ttk.Checkbutton(
-            workout_select_frame,
-            text="Use pre workout shaker every X minutes (all modes)",
+            shaker_frame,
+            text="Use pre workout shaker (auto-drinks 1 scoop on a timer, works in all modes)",
             variable=self.junk_use_preworkout,
-        ).grid(row=6, column=0, columnspan=2, sticky="w", padx=4, pady=(0, 2))
+        ).grid(row=3, column=0, columnspan=2, sticky="w", padx=4, pady=2)
         self.junk_preworkout_interval = tk.DoubleVar(value=10.0)
-        self._labeled_entry(workout_select_frame, "Pre workout interval (min):", self.junk_preworkout_interval, 7)
+        self._labeled_entry(shaker_frame, "  Pre workout interval (min):", self.junk_preworkout_interval, 4)
 
-        webhook_frame = ttk.LabelFrame(parent, text="Discord")
+        self.eat_limit = tk.IntVar(value=0)
+        self.eat_stall_timeout = tk.DoubleVar(value=5.0)
+        self._labeled_entry(shaker_frame, "Eat limit (0 = eat whole inventory):", self.eat_limit, 5)
+        self._labeled_entry(shaker_frame, "Eat stall timeout (s, gives up if stuck):", self.eat_stall_timeout, 6)
+
+        self.bulk_buy_enabled = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            shaker_frame,
+            text="Bulk buy chicken before starting (buys from shop automatically)",
+            variable=self.bulk_buy_enabled,
+        ).grid(row=7, column=0, columnspan=2, sticky="w", padx=4, pady=(4, 2))
+        self.bulk_buy_amount = tk.IntVar(value=100)
+        self.bulk_buy_price = tk.IntVar(value=25)
+        self._labeled_entry(shaker_frame, "  Amount to buy:", self.bulk_buy_amount, 8)
+        self._labeled_entry(shaker_frame, "  Chicken price ($):", self.bulk_buy_price, 9)
+
+        # ═══════════════════════════════════════════════════════
+        # DISCORD — webhook notifications and progress reports
+        # ═══════════════════════════════════════════════════════
+        webhook_frame = ttk.LabelFrame(parent, text="Discord Webhook")
         webhook_frame.pack(fill="x", **pad)
 
+        ttk.Label(
+            webhook_frame,
+            text="Sends embeds to your Discord channel: progress reports, disconnect alerts, status updates.",
+            foreground="#555",
+            wraplength=550,
+        ).grid(row=0, column=0, columnspan=2, sticky="w", padx=4, pady=(4, 6))
+
         self.webhook_url = tk.StringVar(value="")
-        self._labeled_entry(webhook_frame, "Webhook URL:", self.webhook_url, 0, width=50)
-
+        self._labeled_entry(webhook_frame, "Webhook URL:", self.webhook_url, 1, width=50)
         ttk.Button(webhook_frame, text="Send test ping", command=self._send_test_ping)\
-            .grid(row=1, column=1, sticky="w", padx=4, pady=4)
+            .grid(row=2, column=1, sticky="w", padx=4, pady=4)
 
-        tuning_frame = ttk.LabelFrame(parent, text="Tuning")
-        tuning_frame.pack(fill="x", **pad)
+        self.progress_report_enabled = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            webhook_frame,
+            text="Send progress reports (sets done, weight, XP gained) to Discord",
+            variable=self.progress_report_enabled,
+        ).grid(row=3, column=0, columnspan=2, sticky="w", padx=4, pady=(6, 2))
+        self.progress_report_interval = tk.IntVar(value=10)
+        self._labeled_entry(webhook_frame, "  Report every N sets:", self.progress_report_interval, 4)
 
-        self.confidence = tk.DoubleVar(value=0.82)
-        self.poll_interval = tk.DoubleVar(value=0.5)
+        self.has_2x_crew_xp_gamepass = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            webhook_frame,
+            text="Has 2x Crew XP gamepass (doubles XP in report calculations)",
+            variable=self.has_2x_crew_xp_gamepass,
+        ).grid(row=5, column=0, columnspan=2, sticky="w", padx=4, pady=2)
+        self.has_server_boost = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            webhook_frame,
+            text="Check for server boost (auto-detects on screen, adjusts XP when it expires)",
+            variable=self.has_server_boost,
+        ).grid(row=6, column=0, columnspan=2, sticky="w", padx=4, pady=2)
+        self.starting_crew_xp = tk.IntVar(value=0)
+        self._labeled_entry(webhook_frame, "  Starting Crew XP this session:", self.starting_crew_xp, 7)
+        self.xp_per_rep = tk.IntVar(value=1)
+        self._labeled_entry(webhook_frame, "  XP per rep (base, before multipliers):", self.xp_per_rep, 8)
+        self.reps_per_set = tk.IntVar(value=3)
+        self._labeled_entry(webhook_frame, "  Reps per set (used for XP math):", self.reps_per_set, 9)
+
+        # ═══════════════════════════════════════════════════════
+        # DETECTION — how the macro finds things on screen
+        # ═══════════════════════════════════════════════════════
+        detection_frame = ttk.LabelFrame(parent, text="Detection")
+        detection_frame.pack(fill="x", **pad)
+
+        ttk.Label(
+            detection_frame,
+            text="Controls how strictly templates must match and how often the screen is checked.",
+            foreground="#555",
+            wraplength=550,
+        ).grid(row=0, column=0, columnspan=2, sticky="w", padx=4, pady=(4, 6))
+
+        self.confidence = tk.DoubleVar(value=0.70)
+        self.poll_interval = tk.DoubleVar(value=0.10)
+        self.prompt_search_timeout = tk.DoubleVar(value=30.0)
+        self.obstruction_confidence = tk.DoubleVar(value=0.7)
+
+        self._labeled_scale(detection_frame, "Match confidence:", self.confidence, 1, 0.5, 1.0, 0)
+        ttk.Label(
+            detection_frame,
+            text="How closely a template must match the screen. Lower = finds easier but may false-trigger.",
+            foreground="#888",
+        ).grid(row=2, column=0, columnspan=2, sticky="w", padx=20, pady=(0, 4))
+
+        self._labeled_scale(detection_frame, "Poll interval (s):", self.poll_interval, 3, 0.05, 2.0, 1)
+        ttk.Label(
+            detection_frame,
+            text="How often the macro checks the screen. 0.10 = 10 times/sec. Lower = faster but more CPU.",
+            foreground="#888",
+        ).grid(row=4, column=0, columnspan=2, sticky="w", padx=20, pady=(0, 4))
+
+        self._labeled_entry(detection_frame, "Machine prompt timeout (s):", self.prompt_search_timeout, 5)
+        ttk.Label(
+            detection_frame,
+            text="How long to search for the 'Press E' prompt before giving up.",
+            foreground="#888",
+        ).grid(row=6, column=0, columnspan=2, sticky="w", padx=20, pady=(0, 4))
+
+        self._labeled_entry(detection_frame, "Obstruction match confidence:", self.obstruction_confidence, 7)
+        ttk.Label(
+            detection_frame,
+            text="Sensitivity for detecting floor trash / water spills blocking the machine.",
+            foreground="#888",
+        ).grid(row=8, column=0, columnspan=2, sticky="w", padx=20, pady=(0, 6))
+
+        # ═══════════════════════════════════════════════════════
+        # ADVANCED — timing, recovery, stuck detection
+        # ═══════════════════════════════════════════════════════
+        advanced_frame = ttk.LabelFrame(parent, text="Advanced (usually leave these alone)")
+        advanced_frame.pack(fill="x", **pad)
+
+        ttk.Label(
+            advanced_frame,
+            text="Only change these if you know what you're doing or were told to adjust them.",
+            foreground="#555",
+            wraplength=550,
+        ).grid(row=0, column=0, columnspan=2, sticky="w", padx=4, pady=(4, 6))
+
         self.max_minutes = tk.DoubleVar(value=180)
         self.regen_fallback = tk.DoubleVar(value=30)
         self.stall_seconds = tk.DoubleVar(value=15.0)
         self.stall_tolerance = tk.DoubleVar(value=3.0)
-        self.prompt_search_timeout = tk.DoubleVar(value=30.0)
         self.prompt_miss_unstick_after = tk.IntVar(value=2)
         self.obstruction_hold = tk.DoubleVar(value=1.0)
-        self.obstruction_confidence = tk.DoubleVar(value=0.7)
         self.workout_menu_retry_attempts = tk.IntVar(value=5)
         self.prompt_miss_ping_after = tk.IntVar(value=6)
         self.rest_mouse_after_actions = tk.BooleanVar(value=True)
         self.rest_mouse_y_fraction = tk.DoubleVar(value=0.9)
         self.close_menu_key = tk.StringVar(value="")
         self.key_inventory_toggle = tk.StringVar(value="`")
-        self.keep_running = tk.BooleanVar(value=False)
-        self.eat_limit = tk.IntVar(value=0)
-        self.eat_stall_timeout = tk.DoubleVar(value=5.0)
-        self.bulk_buy_enabled = tk.BooleanVar(value=False)
-        self.bulk_buy_amount = tk.IntVar(value=100)
-        self.bulk_buy_price = tk.IntVar(value=25)
 
-        self._labeled_scale(tuning_frame, "Match confidence:", self.confidence, 0, 0.5, 1.0, 0)
-        self._labeled_scale(tuning_frame, "Poll interval (s):", self.poll_interval, 1, 0.1, 2.0, 1)
-        self._labeled_entry(tuning_frame, "Max runtime (min):", self.max_minutes, 2)
-        self._labeled_entry(tuning_frame, "Regen fallback wait (s):", self.regen_fallback, 3)
-        self._labeled_entry(tuning_frame, "Watchdog: stall time (s):", self.stall_seconds, 4)
-        self._labeled_entry(tuning_frame, "Watchdog: stall tolerance:", self.stall_tolerance, 5)
-        
+        self._labeled_entry(advanced_frame, "Max runtime (minutes, 0 = forever):", self.max_minutes, 1)
+        self._labeled_entry(advanced_frame, "Regen fallback (s, max wait for stamina):", self.regen_fallback, 2)
+        self._labeled_entry(advanced_frame, "Stall time (s, detects if stuck on machine):", self.stall_seconds, 3)
+        self._labeled_entry(advanced_frame, "Stall tolerance (pixel change threshold):", self.stall_tolerance, 4)
+        self._labeled_entry(advanced_frame, "Un-stick after N missed prompts:", self.prompt_miss_unstick_after, 5)
         ttk.Label(
-            tuning_frame,
-            text="Watchdog only taps space if the stamina reading hasn't visibly changed\n"
-                 "for the stall time above - not on a fixed timer regardless of state.",
-            foreground="#666",
-        ).grid(row=6, column=0, columnspan=2, sticky="w", padx=4, pady=(0, 6))
-        
-        self._labeled_entry(tuning_frame, "Machine prompt search timeout (s):", self.prompt_search_timeout, 7)
-        self._labeled_entry(tuning_frame, "Un-stick after N missed searches:", self.prompt_miss_unstick_after, 8)
-        
-        ttk.Label(
-            tuning_frame,
-            text="If the machine prompt isn't found this many searches in a row, presses\n"
-                 "space once in case the character is stuck on/at a machine.",
-            foreground="#666",
-        ).grid(row=9, column=0, columnspan=2, sticky="w", padx=4, pady=(0, 6))
-        
-        self._labeled_entry(tuning_frame, "Obstruction hold duration (s):", self.obstruction_hold, 10)
-        self._labeled_entry(tuning_frame, "Obstruction match confidence:", self.obstruction_confidence, 11)
-        
-        ttk.Label(
-            tuning_frame,
-            text="If floor_trash*.png or waterspill*.png is detected blocking the machine\n"
-                 "prompt, holds the interact key this long to clear it, then keeps searching.",
-            foreground="#666",
-        ).grid(row=12, column=0, columnspan=2, sticky="w", padx=4, pady=(0, 6))
-        
-        self._labeled_entry(tuning_frame, "Retry click if menu still open (x):", self.workout_menu_retry_attempts, 13)
-        self._labeled_entry(tuning_frame, "Ping Discord if stuck (N missed prompts):", self.prompt_miss_ping_after, 14)
+            advanced_frame,
+            text="Taps space if machine prompt not found N times in a row (in case character is stuck).",
+            foreground="#888",
+        ).grid(row=6, column=0, columnspan=2, sticky="w", padx=20, pady=(0, 4))
+
+        self._labeled_entry(advanced_frame, "Obstruction hold (s, clears trash/spills):", self.obstruction_hold, 7)
+        self._labeled_entry(advanced_frame, "Menu close retries:", self.workout_menu_retry_attempts, 8)
+        self._labeled_entry(advanced_frame, "Ping Discord after N missed prompts:", self.prompt_miss_ping_after, 9)
 
         ttk.Checkbutton(
-            tuning_frame,
-            text="Rest mouse near bottom of screen after clicks (keeps cursor off UI/menus)",
+            advanced_frame,
+            text="Rest mouse near bottom after clicks (keeps cursor off UI elements)",
             variable=self.rest_mouse_after_actions,
-        ).grid(row=16, column=0, columnspan=2, sticky="w", padx=4, pady=(4, 0))
-        self._labeled_scale(tuning_frame, "Rest position (0=top, 1=bottom):", self.rest_mouse_y_fraction, 17, 0.0, 1.0, 0)
+        ).grid(row=10, column=0, columnspan=2, sticky="w", padx=4, pady=(4, 2))
+        self._labeled_scale(advanced_frame, "  Rest position (0=top, 1=bottom):", self.rest_mouse_y_fraction, 11, 0.0, 1.0, 0)
 
-        self._labeled_entry(tuning_frame, "Close-menu key (blank = exit key):", self.close_menu_key, 18)
-        self._labeled_entry(tuning_frame, "Backpack inventory toggle keybind:", self.key_inventory_toggle, 19)
+        self._labeled_entry(advanced_frame, "Close-menu key (blank = use exit key):", self.close_menu_key, 12)
+        self._labeled_entry(advanced_frame, "Inventory toggle key:", self.key_inventory_toggle, 13)
 
-        ttk.Checkbutton(
-            tuning_frame,
-            text="Keep looping after reaching 'maintaining' (instead of stopping)",
-            variable=self.keep_running,
-        ).grid(row=20, column=0, columnspan=2, sticky="w", padx=4, pady=6)
-
-        self._labeled_entry(tuning_frame, "Eat limit (0 = whole inventory):", self.eat_limit, 21)
-        self._labeled_entry(tuning_frame, "Eat stall timeout (s, 0 = no limit):", self.eat_stall_timeout, 22)
-
-        ttk.Checkbutton(
-            tuning_frame,
-            text="Enable bulk buy food (buy chicken before starting macro)",
-            variable=self.bulk_buy_enabled,
-        ).grid(row=23, column=0, columnspan=2, sticky="w", padx=4, pady=(4, 0))
-        self._labeled_entry(tuning_frame, "Bulk buy amount:", self.bulk_buy_amount, 24)
-        self._labeled_entry(tuning_frame, "Chicken price ($):", self.bulk_buy_price, 25)
-
-        self.progress_report_enabled = tk.BooleanVar(value=False)
-        ttk.Checkbutton(
-            tuning_frame,
-            text="Send progress reports to Discord every N sets",
-            variable=self.progress_report_enabled,
-        ).grid(row=26, column=0, columnspan=2, sticky="w", padx=4, pady=(4, 0))
-        self.progress_report_interval = tk.IntVar(value=10)
-        self._labeled_entry(tuning_frame, "Report every N sets:", self.progress_report_interval, 27)
-
-        self.has_2x_crew_xp_gamepass = tk.BooleanVar(value=False)
-        ttk.Checkbutton(
-            tuning_frame,
-            text="Has 2x Crew XP gamepass (permanent)",
-            variable=self.has_2x_crew_xp_gamepass,
-        ).grid(row=28, column=0, columnspan=2, sticky="w", padx=4, pady=(4, 0))
-        self.has_server_boost = tk.BooleanVar(value=False)
-        ttk.Checkbutton(
-            tuning_frame,
-            text="Check for server boost (auto-detects when it expires)",
-            variable=self.has_server_boost,
-        ).grid(row=29, column=0, columnspan=2, sticky="w", padx=4, pady=(0, 0))
-        self.starting_crew_xp = tk.IntVar(value=0)
-        self._labeled_entry(tuning_frame, "Starting Crew XP this session:", self.starting_crew_xp, 30)
-        self.xp_per_rep = tk.IntVar(value=1)
-        self._labeled_entry(tuning_frame, "XP per rep (base):", self.xp_per_rep, 31)
-        self.reps_per_set = tk.IntVar(value=3)
-        self._labeled_entry(tuning_frame, "Reps per set:", self.reps_per_set, 32)
-
-        monitor_frame = ttk.LabelFrame(parent, text="Screen capture")
+        # ═══════════════════════════════════════════════════════
+        # SCREEN — which monitor to capture
+        # ═══════════════════════════════════════════════════════
+        monitor_frame = ttk.LabelFrame(parent, text="Screen Capture")
         monitor_frame.pack(fill="x", **pad)
 
-        ttk.Label(monitor_frame, text="Monitor:").grid(row=0, column=0, sticky="w", padx=4, pady=4)
+        ttk.Label(monitor_frame, text="Which monitor has Roblox on it:").grid(row=0, column=0, sticky="w", padx=4, pady=4)
         self.monitor_choice = tk.StringVar()
         self.monitor_dropdown = ttk.Combobox(monitor_frame, textvariable=self.monitor_choice, state="readonly", width=40)
         self.monitor_dropdown.grid(row=0, column=1, sticky="w", padx=4, pady=4)
         ttk.Button(monitor_frame, text="Refresh", command=self._refresh_monitors).grid(row=0, column=2, padx=4)
         self._refresh_monitors()
 
+        # ═══════════════════════════════════════════════════════
         save_frame = ttk.Frame(parent)
-        save_frame.pack(fill="x", padx=8, pady=(4, 8))
-        ttk.Button(save_frame, text="💾 Save settings", command=self._save_settings).pack(side="left", padx=4)
-        ttk.Button(save_frame, text="📂 Load settings", command=self._load_settings).pack(side="left", padx=4)
-        self.settings_status = ttk.Label(save_frame, text="", foreground="#666")
+        save_frame.pack(fill="x", padx=8, pady=(8, 12))
+        ttk.Button(save_frame, text="Save settings", command=self._save_settings).pack(side="left", padx=4)
+        ttk.Button(save_frame, text="Load settings", command=self._load_settings).pack(side="left", padx=4)
+        self.settings_status = ttk.Label(save_frame, text="Settings auto-save when you close the window.", foreground="#666")
         self.settings_status.pack(side="left", padx=8)
 
     def _refresh_workout_dropdown_list(self):

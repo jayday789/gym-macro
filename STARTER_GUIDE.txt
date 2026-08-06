@@ -1,0 +1,106 @@
+==============================
+  GYM MACRO - STARTER GUIDE
+  made by starlingz
+==============================
+
+1. DOWNLOAD & INSTALL
+---------------------
+- Install Python 3.10+ from https://python.org (tick "Add to PATH" during install)
+- Download the macro from https://github.com/jayday789/gym-macro
+- Extract the zip anywhere on your PC
+
+2. FIRST LAUNCH
+---------------
+- Double-click "Launch Gym Macro.bat"
+- It'll auto-install all required packages on first run
+- The GUI will open once it's ready
+
+3. SETUP IN GUI
+---------------
+- Pick your monitor (if you have multiple)
+- Set your keybinds (E to interact, Space to workout, LMB to get off - match your in-game binds)
+- Choose your workout mode: Hypertrophy, Strength, or Junk
+- Toggle optional features: creatine shaker, pre workout, auto eat, Discord webhook
+
+4. TEMPLATES (IMPORTANT)
+------------------------
+You need to screenshot a few things from YOUR game and save them in the "templates/" folder as .png files.
+
+Must have:
+- machine_prompt.png      -> the "Press E" or "Use Machine" popup
+- maintaining.png         -> green "Maintaining" text under your name
+- A workout mode template -> hypertrophy.png, strength.png, or junk.png
+
+Optional but recommended:
+- food_chicken.png        -> chicken in inventory (for auto eat)
+- food_creatine.png       -> creatine in shaker popup
+- food_preworkout.png     -> pre workout in shaker popup
+- empty_circle.png        -> empty shaker circle
+- drink_button.png        -> green confirm to drink
+
+5. HOW TO CAPTURE TEMPLATES
+----------------------------
+- Open the game, get to the screen with the element you need
+- Use the Debug tab in the macro -> "Capture screen now"
+- Open the screenshot and crop tightly around just the text/button
+- Save as .png in templates/ with the correct name
+
+6. RUNNING THE MACRO
+--------------------
+- Stand next to your machine in-game
+- Hit Start in the GUI
+- Press F6 anytime to toggle the macro on/off
+- It'll auto workout, regen stamina, eat, drink shakers, and send Discord updates
+
+7. TIPS
+-------
+- Run Roblox in windowed/borderless, not minimized
+- Don't cover the game window with other apps
+- Crop templates tight - less background = better detection
+- If something isn't working, check the log in the GUI for what it's looking for
+- Match confidence should be around 0.70 (lower = more lenient, higher = stricter)
+- Poll interval 0.10s is fine for most PCs
+
+8. SETTINGS EXPLAINED
+---------------------
+Match confidence (0.70):
+  How closely a template must match the screen to count as "found".
+  Lower = finds things easier but might false-trigger.
+  Higher = more accurate but might miss things.
+
+Poll interval (0.10s):
+  How often the macro checks the screen. 0.10 = 10 times per second.
+  Lower = faster reactions but uses more CPU.
+
+Click machine prompt:
+  If enabled, the macro will click where it detects the machine prompt on screen.
+  Turn this on if pressing E doesn't work (some games eat the keypress in chat).
+
+Also send interact key after click:
+  Sends the interact key (E) right after clicking the prompt.
+  Use this if clicking alone doesn't get you on the machine.
+
+One rep off mode:
+  Does 1 rep then immediately gets off to regen. Fastest XP method for junk volume.
+
+Junk no food:
+  Skips eating entirely during junk mode (useful if you don't care about maintaining).
+
+Creatine shaker:
+  Auto-drinks creatine every 4 minutes (5 scoops per shake).
+
+Pre workout:
+  Auto-drinks pre workout every 10 minutes (1 scoop per shake).
+
+Auto eat:
+  Automatically eats chicken when you're in deficit/need food.
+
+Bulk buy:
+  Buys chicken in bulk from the shop instead of one at a time.
+
+Discord webhook:
+  Sends progress updates (sets, reps, weight, XP) to your Discord channel.
+
+==============================
+  any issues? ask in the chat
+==============================

@@ -5,7 +5,7 @@ Core automation logic for the Roblox gym macro.
 Made by starlingz
 """
 
-__version__ = "1.0.23"
+__version__ = "1.1"
 
 import time
 import random
@@ -1267,6 +1267,7 @@ class GymMacro:
             last_stam_number = -1
             stam_same_count = 0
             ocr_fail_count = 0
+            last_stam_frame = None
 
             # Check if shaker timer has elapsed (works across regen cycles)
             if self.cfg.junk_use_shaker and (time.time() - self._last_shaker_use) >= self.cfg.junk_shaker_interval * 60:
@@ -1315,53 +1316,26 @@ class GymMacro:
                     if not self.cfg.junk_no_food and (time.time() - start_time) > 10 and self.is_maintaining(screen=screen):
                         return "maintaining"
                     
-                    # read stamina number via OCR — if same number for 3 seconds, regen
+                    # detect stamina stall via pixel comparison (no OCR needed)
+                    # compare bottom-left region between frames - if unchanged, stamina stopped
                     h, w = screen.shape[:2]
-                    # crop whole bottom-left corner for stamina
                     stam_roi = screen[int(h*0.75):h, 0:int(w*0.25)]
-                    try:
-                        import pytesseract as _pyt
-                        _local = Path(__file__).parent / "Tesseract-OCR" / "tesseract.exe"
-                        if _local.exists():
-                            _pyt.pytesseract.tesseract_cmd = str(_local)
+                    gray_roi = cv2.cvtColor(stam_roi, cv2.COLOR_BGR2GRAY)
+                    
+                    if last_stam_frame is not None:
+                        diff = cv2.absdiff(gray_roi, last_stam_frame)
+                        change = diff.mean()
+                        if change < 1.0:
+                            # pixels barely changed = stamina stopped moving
+                            stam_same_count += 1
                         else:
-                            _pyt.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-                        gray = cv2.cvtColor(stam_roi, cv2.COLOR_BGR2GRAY)
-                        _, thresh = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY)
-                        raw = _pyt.image_to_string(thresh, config='--psm 7')
-                        # find stamina like "24/100" or just a number 0-100
-                        stam_match = re.search(r'(\d+)\s*/\s*100', raw)
-                        if not stam_match:
-                            # grab all numbers, pick the one that's 0-100
-                            nums = [int(m) for m in re.findall(r'\d+', raw) if 0 <= int(m) <= 100]
-                            if nums:
-                                current_stam = nums[0]
-                            else:
-                                current_stam = None
-                        else:
-                            current_stam = int(stam_match.group(1))
+                            stam_same_count = 0
                         
-                        if current_stam is not None:
-                            ocr_fail_count = 0
-                            if current_stam == last_stam_number:
-                                stam_same_count += 1
-                            else:
-                                stam_same_count = 0
-                                last_stam_number = current_stam
-                            # same number for 3 consecutive checks = stamina stalled
-                            if stam_same_count >= 3:
-                                self.log(f"Stamina stuck at {current_stam}, getting off to regen.")
-                                return "low_stamina"
-                        else:
-                            ocr_fail_count += 1
-                            if ocr_fail_count >= 5:
-                                self.log("OCR failed 5 times in a row, getting off to regen.")
-                                return "low_stamina"
-                    except Exception:
-                        ocr_fail_count += 1
-                        if ocr_fail_count >= 5:
-                            self.log("OCR exception 5 times, getting off to regen.")
+                        if stam_same_count >= 3:
+                            self.log(f"Stamina stopped moving (pixel diff {change:.2f}), getting off to regen.")
                             return "low_stamina"
+                    
+                    last_stam_frame = gray_roi
 
         while True:
             self._check_stop()
