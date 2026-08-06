@@ -1,3 +1,6 @@
+## v1.1.2 - 08/06/2026 12:57
+- fixed f6 not toggling correctly
+
 ## v1.1.1 - 08/06/2026 12:54
 - changed junk stall and fixed monitor issues and shaker
 

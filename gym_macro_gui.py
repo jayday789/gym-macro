@@ -56,6 +56,7 @@ class GymMacroGUI(tk.Tk):
         self.after(100, self._drain_log_queue)
         self._auto_update_loop()
         self._hotkey_poll()  # start checking for F6 toggle
+        self._f6_was_down = False
 
     def _on_close(self):
         self._save_settings(silent=True)
@@ -782,12 +783,16 @@ class GymMacroGUI(tk.Tk):
     def _hotkey_poll(self):
         """check if F6 is pressed to toggle macro on/off (works even when game is focused)"""
         VK_F6 = 0x75
-        if ctypes.windll.user32.GetAsyncKeyState(VK_F6) & 0x8000:
+        key_down = bool(ctypes.windll.user32.GetAsyncKeyState(VK_F6) & 0x8000)
+        
+        if key_down and not self._f6_was_down:
+            # key just pressed (transition from up to down)
             if self.worker_thread and self.worker_thread.is_alive():
                 self._stop()
             else:
                 self._start()
-            time.sleep(0.3)  # debounce
+        
+        self._f6_was_down = key_down
         self.after(50, self._hotkey_poll)
 
     def _build_config(self) -> MacroConfig:
