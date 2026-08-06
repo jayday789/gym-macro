@@ -5,7 +5,7 @@ Core automation logic for the Roblox gym macro.
 Made by starlingz
 """
 
-__version__ = "1.0.18"
+__version__ = "1.0.19"
 
 import time
 import random
@@ -1315,8 +1315,8 @@ class GymMacro:
                     
                     # read stamina number via OCR — if same number for 3 seconds, regen
                     h, w = screen.shape[:2]
-                    # stamina text is bottom-left
-                    stam_roi = screen[int(h*0.88):int(h*0.98), 0:int(w*0.15)]
+                    # crop whole bottom-left corner for stamina
+                    stam_roi = screen[int(h*0.75):h, 0:int(w*0.25)]
                     try:
                         import pytesseract as _pyt
                         _local = Path(__file__).parent / "Tesseract-OCR" / "tesseract.exe"
@@ -1338,12 +1338,17 @@ class GymMacro:
                             else:
                                 stam_same_count = 0
                                 last_stam_number = current_stam
-                            # same number for 3 checks (3 seconds) = stamina stopped
-                            if stam_same_count >= 3:
+                            # same number for 1 check (1 second) = stamina stopped
+                            if stam_same_count >= 1:
                                 self.log(f"Stamina stuck at {current_stam} for 3s, getting off to regen.")
                                 return "low_stamina"
                     except Exception:
                         pass
+                    
+                    # fallback: if OCR keeps failing, use 1s timer
+                    if (time.time() - start_time) > 1:
+                        self.log("Junk fallback timer (1s), getting off to regen.")
+                        return "low_stamina"
 
         while True:
             self._check_stop()
@@ -1363,9 +1368,9 @@ class GymMacro:
                 last_vision_check = now
                 screen = self.grab_screen()
 
-                # read stamina number — if same for 3 seconds, get off
+                # crop whole bottom-left corner for stamina
                 h, w = screen.shape[:2]
-                stam_roi = screen[int(h*0.88):int(h*0.98), 0:int(w*0.15)]
+                stam_roi = screen[int(h*0.75):h, 0:int(w*0.25)]
                 try:
                     import pytesseract as _pyt
                     _local = Path(__file__).parent / "Tesseract-OCR" / "tesseract.exe"

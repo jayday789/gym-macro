@@ -1,3 +1,6 @@
+## v1.0.19 - 08/06/2026 11:51
+- widened stamina crop
+
 ## v1.0.18 - 08/05/2026 20:11
 - hopefully fixed menu bug
 
