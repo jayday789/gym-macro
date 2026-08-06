@@ -1,3 +1,6 @@
+## v1.1.3 - 08/06/2026 13:23
+- added stamina_text template MUST ADD before starting
+
 ## v1.1.2 - 08/06/2026 12:57
 - fixed f6 not toggling correctly
 

@@ -864,6 +864,19 @@ class GymMacroGUI(tk.Tk):
             if not proceed:
                 return
 
+        # Check for stamina_text.png template
+        stam_tmpl = Path(self.template_dir.get()) / "stamina_text.png"
+        if not stam_tmpl.exists():
+            messagebox.showwarning(
+                "Stamina template required",
+                "You need to create 'stamina_text.png' before starting.\n\n"
+                "1. Use Debug tab → 'Capture screen now'\n"
+                "2. Open the screenshot and crop just the word 'Stamina'\n"
+                "3. Save it as templates/stamina_text.png\n\n"
+                "This is required so the macro can find your stamina number on screen.",
+            )
+            return
+
         self.stop_event.clear()
         self.status_var.set("Running")
         self.start_btn.config(state="disabled")

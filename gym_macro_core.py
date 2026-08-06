@@ -5,7 +5,7 @@ Core automation logic for the Roblox gym macro.
 Made by starlingz
 """
 
-__version__ = "1.1.2"
+__version__ = "1.1.3"
 
 import time
 import random
@@ -976,28 +976,26 @@ class GymMacro:
             
             th, tw = tmpl_gray.shape[:2]
             result = cv2.matchTemplate(screen_gray, tmpl_gray, cv2.TM_CCOEFF_NORMED)
-            locations = np.where(result >= 0.55)
+            locations = np.where(result >= 0.50)
             
             circles = []
             for pt_y, pt_x in zip(*locations):
                 cx, cy = pt_x + tw//2, pt_y + th//2
-                too_close = any(abs(cx - fx) < tw//2 for fx, _ in circles)
+                # dedup: only merge if VERY close (within 1/3 of template width)
+                too_close = any(abs(cx - fx) < tw//3 and abs(cy - fy) < th//3 for fx, fy in circles)
                 if not too_close:
                     circles.append((cx, cy))
             
             if not circles:
-                self.log("⚠️ No empty circles found.")
+                self.log("⚠️ No empty circles found on screen.")
                 self.rest_mouse()
                 return
             
             circles.sort(key=lambda c: c[0])
+            self.log(f"  Found {len(circles)} circles, picking rightmost.")
             m = self._monitor
-            # Pick the 7th circle (last of 7 shaker circles, sorted left to right)
-            if len(circles) >= 7:
-                fifth_x, fifth_y = circles[6]
-            else:
-                # Less than 7 found, use rightmost available
-                fifth_x, fifth_y = circles[-1]
+            # Always pick the rightmost circle (should be circle 7)
+            fifth_x, fifth_y = circles[-1]
             # Convert to absolute coords
             fifth_x = m["left"] + fifth_x
             fifth_y = m["top"] + fifth_y
@@ -1268,6 +1266,7 @@ class GymMacro:
             stam_same_count = 0
             ocr_fail_count = 0
             last_stam_frame = None
+            stam_history = []
 
             # Check if shaker timer has elapsed (works across regen cycles)
             if self.cfg.junk_use_shaker and (time.time() - self._last_shaker_use) >= self.cfg.junk_shaker_interval * 60:
@@ -1309,33 +1308,80 @@ class GymMacro:
 
                 now = time.time()
 
-                if now - last_vision_j >= 1.0:
+                if now - last_vision_j >= 0.5:
                     last_vision_j = now
                     screen = self.grab_screen()
                     # skip maintaining check for first 10s of each set
                     if not self.cfg.junk_no_food and (time.time() - start_time) > 10 and self.is_maintaining(screen=screen):
                         return "maintaining"
                     
-                    # detect stamina stall via pixel comparison (no OCR needed)
-                    # crop just the stamina bar area (very bottom-left strip)
+                    # Junk stall: read stamina number with OCR, get off when it hits 0-1
                     h, w = screen.shape[:2]
-                    stam_roi = screen[int(h*0.92):h, 0:int(w*0.30)]
-                    gray_roi = cv2.cvtColor(stam_roi, cv2.COLOR_BGR2GRAY)
                     
-                    if last_stam_frame is not None and gray_roi.shape == last_stam_frame.shape:
-                        diff = cv2.absdiff(gray_roi, last_stam_frame)
-                        change = diff.mean()
-                        if change < 2.0:
-                            # pixels barely changed = stamina stopped moving
-                            stam_same_count += 1
+                    # Use stamina_text.png template to locate the stamina label precisely
+                    stam_tmpl = self.cfg.template_dir / "stamina_text.png"
+                    if stam_tmpl.exists():
+                        match = self.find_on_screen(stam_tmpl, custom_threshold=0.6, screen=screen)
+                        if match:
+                            sx, sy, _ = match
+                            # Crop the number area to the right of the label
+                            m = self._monitor
+                            rel_x = sx - m["left"]
+                            rel_y = sy - m["top"]
+                            # Number is to the right of "Stamina" text, same height
+                            tmpl_bgr, tmpl_gray = self._load_template(stam_tmpl)
+                            th, tw = tmpl_gray.shape[:2]
+                            crop_y1 = max(0, rel_y - th//2)
+                            crop_y2 = min(h, rel_y + th)
+                            crop_x1 = rel_x + tw//2
+                            crop_x2 = min(w, crop_x1 + int(w*0.12))
+                            stam_roi = screen[crop_y1:crop_y2, crop_x1:crop_x2]
                         else:
-                            stam_same_count = 0
+                            # Template not found on screen, fall back to bottom-left crop
+                            stam_roi = screen[int(h*0.92):h, 0:int(w*0.30)]
+                    else:
+                        # No template file, use default bottom-left crop
+                        stam_roi = screen[int(h*0.92):h, 0:int(w*0.30)]
+                    try:
+                        import pytesseract as _pyt
+                        _local = Path(__file__).parent / "Tesseract-OCR" / "tesseract.exe"
+                        if _local.exists():
+                            _pyt.pytesseract.tesseract_cmd = str(_local)
+                        else:
+                            _pyt.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+                        gray = cv2.cvtColor(stam_roi, cv2.COLOR_BGR2GRAY)
+                        # Scale up 3x for better OCR on small text
+                        scaled = cv2.resize(gray, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
+                        _, thresh = cv2.threshold(scaled, 180, 255, cv2.THRESH_BINARY)
+                        raw = _pyt.image_to_string(thresh, config='--psm 7 -c tessedit_char_whitelist=0123456789/')
+                        # Look for pattern like "23/100" or just grab first number
+                        stam_match = re.search(r'(\d+)\s*/\s*100', raw)
+                        if stam_match:
+                            current_stam = int(stam_match.group(1))
+                        else:
+                            nums = [int(m) for m in re.findall(r'\d+', raw) if 0 <= int(m) <= 100]
+                            current_stam = nums[0] if nums else None
                         
-                        if stam_same_count >= 5:
-                            self.log(f"Stamina stopped moving (pixel diff {change:.2f}), getting off to regen.")
+                        if current_stam is not None:
+                            self.log(f"  Junk stamina read: {current_stam}")
+                            if current_stam <= 1:
+                                stam_same_count += 1
+                                if stam_same_count >= 2:
+                                    self.log(f"Stamina depleted ({current_stam}) confirmed 2x, getting off.")
+                                    return "low_stamina"
+                            else:
+                                stam_same_count = 0
+                        else:
+                            # OCR couldn't read a number — might be at 0 or glitched
+                            ocr_fail_count += 1
+                            if ocr_fail_count >= 15:
+                                self.log("OCR can't read stamina 15x, getting off to regen.")
+                                return "low_stamina"
+                    except Exception:
+                        ocr_fail_count += 1
+                        if ocr_fail_count >= 15:
+                            self.log("OCR exception 15x, getting off to regen.")
                             return "low_stamina"
-                    
-                    last_stam_frame = gray_roi
 
         while True:
             self._check_stop()
