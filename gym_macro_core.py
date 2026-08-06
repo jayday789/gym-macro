@@ -5,7 +5,7 @@ Core automation logic for the Roblox gym macro.
 Made by starlingz
 """
 
-__version__ = "1.0.22"
+__version__ = "1.0.23"
 
 import time
 import random
@@ -1209,6 +1209,7 @@ class GymMacro:
         stall_count = 0
         last_stam_number = -1
         stam_same_count = 0  # how many consecutive unchanged checks
+        ocr_fail_count = 0
 
         # Check if this is a forearm workout (needs delay between clicks)
         is_forearm = "forearm" in self.cfg.chosen_workout.lower()
@@ -1265,6 +1266,7 @@ class GymMacro:
             stall_count_j = 0
             last_stam_number = -1
             stam_same_count = 0
+            ocr_fail_count = 0
 
             # Check if shaker timer has elapsed (works across regen cycles)
             if self.cfg.junk_use_shaker and (time.time() - self._last_shaker_use) >= self.cfg.junk_shaker_interval * 60:
@@ -1340,6 +1342,7 @@ class GymMacro:
                             current_stam = int(stam_match.group(1))
                         
                         if current_stam is not None:
+                            ocr_fail_count = 0
                             if current_stam == last_stam_number:
                                 stam_same_count += 1
                             else:
@@ -1349,8 +1352,16 @@ class GymMacro:
                             if stam_same_count >= 3:
                                 self.log(f"Stamina stuck at {current_stam}, getting off to regen.")
                                 return "low_stamina"
+                        else:
+                            ocr_fail_count += 1
+                            if ocr_fail_count >= 5:
+                                self.log("OCR failed 5 times in a row, getting off to regen.")
+                                return "low_stamina"
                     except Exception:
-                        pass
+                        ocr_fail_count += 1
+                        if ocr_fail_count >= 5:
+                            self.log("OCR exception 5 times, getting off to regen.")
+                            return "low_stamina"
 
         while True:
             self._check_stop()
@@ -1390,6 +1401,7 @@ class GymMacro:
                         nums = [int(m) for m in re.findall(r'\d+', raw) if 0 <= int(m) <= 100]
                         current_stam = nums[0] if nums else None
                     if current_stam is not None:
+                        ocr_fail_count = 0
                         if current_stam == last_stam_number:
                             stam_same_count += 1
                         else:
@@ -1410,8 +1422,16 @@ class GymMacro:
                                     self._send_progress_report()
                             self.log(f"Stamina stuck at {current_stam} for 3s, getting off to regen.")
                             return "low_stamina"
+                    else:
+                        ocr_fail_count += 1
+                        if ocr_fail_count >= 5:
+                            self.log("OCR failed 5 times in a row, getting off to regen.")
+                            return "low_stamina"
                 except Exception:
-                    pass
+                    ocr_fail_count += 1
+                    if ocr_fail_count >= 5:
+                        self.log("OCR exception 5 times, getting off to regen.")
+                        return "low_stamina"
 
                 # Still check captcha since it blocks input
                 word_prompts = self.type_word_prompt_templates()

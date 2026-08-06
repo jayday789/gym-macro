@@ -1,3 +1,6 @@
+## v1.0.23 - 08/06/2026 12:13
+- changed stall to hopefully work but makes it 3 seconds
+
 ## v1.0.22 - 08/06/2026 12:08
 - made indicator 1 second instead of 8
 
