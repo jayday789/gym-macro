@@ -1,3 +1,6 @@
+## v1.0.21 - 08/06/2026 11:57
+- hopefully fixed junk jumping early
+
 ## v1.0.20 - 08/06/2026 11:53
 - accidentally left a fallback timer in
 

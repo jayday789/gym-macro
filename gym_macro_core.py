@@ -5,7 +5,7 @@ Core automation logic for the Roblox gym macro.
 Made by starlingz
 """
 
-__version__ = "1.0.20"
+__version__ = "1.0.21"
 
 import time
 import random
@@ -1327,20 +1327,27 @@ class GymMacro:
                         gray = cv2.cvtColor(stam_roi, cv2.COLOR_BGR2GRAY)
                         _, thresh = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY)
                         raw = _pyt.image_to_string(thresh, config='--psm 7')
-                        # find number before the slash like "24/100" or just "24"
-                        stam_match = re.search(r'(\d+)\s*/\s*\d+', raw)
+                        # find stamina like "24/100" or just a number 0-100
+                        stam_match = re.search(r'(\d+)\s*/\s*100', raw)
                         if not stam_match:
-                            stam_match = re.search(r'(\d+)', raw)
-                        if stam_match:
+                            # grab all numbers, pick the one that's 0-100
+                            nums = [int(m) for m in re.findall(r'\d+', raw) if 0 <= int(m) <= 100]
+                            if nums:
+                                current_stam = nums[0]
+                            else:
+                                current_stam = None
+                        else:
                             current_stam = int(stam_match.group(1))
+                        
+                        if current_stam is not None:
                             if current_stam == last_stam_number:
                                 stam_same_count += 1
                             else:
                                 stam_same_count = 0
                                 last_stam_number = current_stam
-                            # same number for 1 check (1 second) = stamina stopped
-                            if stam_same_count >= 1:
-                                self.log(f"Stamina stuck at {current_stam} for 3s, getting off to regen.")
+                            # same number for 3 consecutive checks = stamina stalled
+                            if stam_same_count >= 3:
+                                self.log(f"Stamina stuck at {current_stam}, getting off to regen.")
                                 return "low_stamina"
                     except Exception:
                         pass
@@ -1376,11 +1383,13 @@ class GymMacro:
                     gray = cv2.cvtColor(stam_roi, cv2.COLOR_BGR2GRAY)
                     _, thresh = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY)
                     raw = _pyt.image_to_string(thresh, config='--psm 7')
-                    stam_match = re.search(r'(\d+)\s*/\s*\d+', raw)
-                    if not stam_match:
-                        stam_match = re.search(r'(\d+)', raw)
+                    stam_match = re.search(r'(\d+)\s*/\s*100', raw)
                     if stam_match:
                         current_stam = int(stam_match.group(1))
+                    else:
+                        nums = [int(m) for m in re.findall(r'\d+', raw) if 0 <= int(m) <= 100]
+                        current_stam = nums[0] if nums else None
+                    if current_stam is not None:
                         if current_stam == last_stam_number:
                             stam_same_count += 1
                         else:
