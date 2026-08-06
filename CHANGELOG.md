@@ -1,3 +1,6 @@
+## v1.1.4 - 08/06/2026 14:03
+- junk fix number 1000
+
 ## v1.1.3 - 08/06/2026 13:23
 - added stamina_text template MUST ADD before starting
 

@@ -5,7 +5,7 @@ Core automation logic for the Roblox gym macro.
 Made by starlingz
 """
 
-__version__ = "1.1.3"
+__version__ = "1.1.4"
 
 import time
 import random
@@ -1267,6 +1267,7 @@ class GymMacro:
             ocr_fail_count = 0
             last_stam_frame = None
             stam_history = []
+            lowest_stam_seen = 100
 
             # Check if shaker timer has elapsed (works across regen cycles)
             if self.cfg.junk_use_shaker and (time.time() - self._last_shaker_use) >= self.cfg.junk_shaker_interval * 60:
@@ -1324,23 +1325,22 @@ class GymMacro:
                         match = self.find_on_screen(stam_tmpl, custom_threshold=0.6, screen=screen)
                         if match:
                             sx, sy, _ = match
-                            # Crop the number area to the right of the label
                             m = self._monitor
                             rel_x = sx - m["left"]
                             rel_y = sy - m["top"]
-                            # Number is to the right of "Stamina" text, same height
                             tmpl_bgr, tmpl_gray = self._load_template(stam_tmpl)
                             th, tw = tmpl_gray.shape[:2]
-                            crop_y1 = max(0, rel_y - th//2)
-                            crop_y2 = min(h, rel_y + th)
-                            crop_x1 = rel_x + tw//2
-                            crop_x2 = min(w, crop_x1 + int(w*0.12))
-                            stam_roi = screen[crop_y1:crop_y2, crop_x1:crop_x2]
+                            # The stamina number is right after the "Stamina" text
+                            # Start crop right at the template center (overlaps label end)
+                            # to make sure we capture "XX/100" not just "/100"
+                            num_x1 = max(0, rel_x)
+                            num_x2 = min(w, rel_x + tw + int(w*0.15))
+                            num_y1 = max(0, rel_y - th)
+                            num_y2 = min(h, rel_y + th)
+                            stam_roi = screen[num_y1:num_y2, num_x1:num_x2]
                         else:
-                            # Template not found on screen, fall back to bottom-left crop
                             stam_roi = screen[int(h*0.92):h, 0:int(w*0.30)]
                     else:
-                        # No template file, use default bottom-left crop
                         stam_roi = screen[int(h*0.92):h, 0:int(w*0.30)]
                     try:
                         import pytesseract as _pyt
@@ -1354,33 +1354,42 @@ class GymMacro:
                         scaled = cv2.resize(gray, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
                         _, thresh = cv2.threshold(scaled, 180, 255, cv2.THRESH_BINARY)
                         raw = _pyt.image_to_string(thresh, config='--psm 7 -c tessedit_char_whitelist=0123456789/')
-                        # Look for pattern like "23/100" or just grab first number
-                        stam_match = re.search(r'(\d+)\s*/\s*100', raw)
-                        if stam_match:
-                            current_stam = int(stam_match.group(1))
-                        else:
-                            nums = [int(m) for m in re.findall(r'\d+', raw) if 0 <= int(m) <= 100]
-                            current_stam = nums[0] if nums else None
+                        self.log(f"  OCR raw: '{raw.strip()}'")
+                        # Find all numbers in the raw text
+                        all_nums = re.findall(r'\d+', raw)
+                        current_stam = None
+                        if len(all_nums) >= 2:
+                            # Format is "XX 100" or "XX/100" — first number is current stamina
+                            first = int(all_nums[0])
+                            if 0 <= first <= 100:
+                                current_stam = first
+                        elif len(all_nums) == 1:
+                            val = int(all_nums[0])
+                            # Single number — only use if it's NOT 100 (that's the max)
+                            if 0 <= val < 100:
+                                current_stam = val
                         
                         if current_stam is not None:
                             self.log(f"  Junk stamina read: {current_stam}")
+                            ocr_fail_count = 0
                             if current_stam <= 1:
                                 stam_same_count += 1
-                                if stam_same_count >= 2:
-                                    self.log(f"Stamina depleted ({current_stam}) confirmed 2x, getting off.")
+                                if stam_same_count >= 3:
+                                    self.log(f"Stamina at {current_stam} for 3 reads, getting off.")
                                     return "low_stamina"
                             else:
                                 stam_same_count = 0
+                            last_stam_number = current_stam
                         else:
-                            # OCR couldn't read a number — might be at 0 or glitched
+                            # OCR returned nothing — if last read was low, stamina is probably at 0
                             ocr_fail_count += 1
-                            if ocr_fail_count >= 15:
-                                self.log("OCR can't read stamina 15x, getting off to regen.")
+                            if last_stam_number >= 0 and last_stam_number <= 10 and ocr_fail_count >= 3:
+                                self.log(f"OCR empty after reading {last_stam_number}, stamina depleted. Getting off.")
                                 return "low_stamina"
                     except Exception:
                         ocr_fail_count += 1
-                        if ocr_fail_count >= 15:
-                            self.log("OCR exception 15x, getting off to regen.")
+                        if last_stam_number >= 0 and last_stam_number <= 10 and ocr_fail_count >= 3:
+                            self.log(f"OCR failed after reading {last_stam_number}, getting off.")
                             return "low_stamina"
 
         while True:
