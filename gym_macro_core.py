@@ -5,7 +5,7 @@ Core automation logic for the Roblox gym macro.
 Made by starlingz
 """
 
-__version__ = "1.1.4"
+__version__ = "1.1.5"
 
 import time
 import random
@@ -1410,9 +1410,27 @@ class GymMacro:
                 last_vision_check = now
                 screen = self.grab_screen()
 
-                # crop whole bottom-left corner for stamina
+                # Use stamina_text.png template to locate stamina number
                 h, w = screen.shape[:2]
-                stam_roi = screen[int(h*0.75):h, 0:int(w*0.25)]
+                stam_tmpl = self.cfg.template_dir / "stamina_text.png"
+                if stam_tmpl.exists():
+                    match = self.find_on_screen(stam_tmpl, custom_threshold=0.6, screen=screen)
+                    if match:
+                        sx, sy, _ = match
+                        m = self._monitor
+                        rel_x = sx - m["left"]
+                        rel_y = sy - m["top"]
+                        tmpl_bgr, tmpl_gray = self._load_template(stam_tmpl)
+                        th, tw = tmpl_gray.shape[:2]
+                        num_x1 = max(0, rel_x)
+                        num_x2 = min(w, rel_x + tw + int(w*0.15))
+                        num_y1 = max(0, rel_y - th)
+                        num_y2 = min(h, rel_y + th)
+                        stam_roi = screen[num_y1:num_y2, num_x1:num_x2]
+                    else:
+                        stam_roi = screen[int(h*0.92):h, 0:int(w*0.30)]
+                else:
+                    stam_roi = screen[int(h*0.92):h, 0:int(w*0.30)]
                 try:
                     import pytesseract as _pyt
                     _local = Path(__file__).parent / "Tesseract-OCR" / "tesseract.exe"
@@ -1421,14 +1439,19 @@ class GymMacro:
                     else:
                         _pyt.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
                     gray = cv2.cvtColor(stam_roi, cv2.COLOR_BGR2GRAY)
-                    _, thresh = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY)
-                    raw = _pyt.image_to_string(thresh, config='--psm 7')
-                    stam_match = re.search(r'(\d+)\s*/\s*100', raw)
-                    if stam_match:
-                        current_stam = int(stam_match.group(1))
-                    else:
-                        nums = [int(m) for m in re.findall(r'\d+', raw) if 0 <= int(m) <= 100]
-                        current_stam = nums[0] if nums else None
+                    scaled = cv2.resize(gray, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
+                    _, thresh = cv2.threshold(scaled, 180, 255, cv2.THRESH_BINARY)
+                    raw = _pyt.image_to_string(thresh, config='--psm 7 -c tessedit_char_whitelist=0123456789/')
+                    all_nums = re.findall(r'\d+', raw)
+                    current_stam = None
+                    if len(all_nums) >= 2:
+                        first = int(all_nums[0])
+                        if 0 <= first <= 100:
+                            current_stam = first
+                    elif len(all_nums) == 1:
+                        val = int(all_nums[0])
+                        if 0 <= val < 100:
+                            current_stam = val
                     if current_stam is not None:
                         ocr_fail_count = 0
                         if current_stam == last_stam_number:
@@ -1438,7 +1461,7 @@ class GymMacro:
                             last_stam_number = current_stam
                             self._total_reps += 1  # stamina dropped = rep done
                         if stam_same_count >= 3:
-                            # stamina stuck for 3s — done with set
+                            # stamina stuck for 3 checks — done with set
                             if self.cfg.progress_report_enabled:
                                 weight = self._read_weight_from_screen()
                                 if weight:
@@ -1449,17 +1472,20 @@ class GymMacro:
                                     self._total_reps = min_reps
                                 if self._sets_done % self.cfg.progress_report_interval == 0:
                                     self._send_progress_report()
-                            self.log(f"Stamina stuck at {current_stam} for 3s, getting off to regen.")
+                            self.log(f"Stamina stuck at {current_stam} for 3 reads, getting off to regen.")
                             return "low_stamina"
                     else:
                         ocr_fail_count += 1
-                        if ocr_fail_count >= 5:
-                            self.log("OCR failed 5 times in a row, getting off to regen.")
+                        if last_stam_number >= 0 and last_stam_number <= 10 and ocr_fail_count >= 3:
+                            self.log(f"OCR empty after reading {last_stam_number}, getting off.")
+                            return "low_stamina"
+                        elif ocr_fail_count >= 10:
+                            self.log("OCR failed 10 times, getting off to regen.")
                             return "low_stamina"
                 except Exception:
                     ocr_fail_count += 1
-                    if ocr_fail_count >= 5:
-                        self.log("OCR exception 5 times, getting off to regen.")
+                    if ocr_fail_count >= 10:
+                        self.log("OCR exception 10 times, getting off to regen.")
                         return "low_stamina"
 
                 # Still check captcha since it blocks input

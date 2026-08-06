@@ -1,3 +1,6 @@
+## v1.1.5 - 08/06/2026 14:07
+- fixed all stamina detection
+
 ## v1.1.4 - 08/06/2026 14:03
 - junk fix number 1000
 
