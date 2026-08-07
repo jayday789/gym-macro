@@ -1,3 +1,6 @@
+## v1.1.6 - 08/06/2026 23:32
+- made one rep faster and fixed shaker blocked by tug of war now uses known shaker coords
+
 ## v1.1.5 - 08/06/2026 14:07
 - fixed all stamina detection
 

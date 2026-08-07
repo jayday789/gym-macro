@@ -5,7 +5,7 @@ Core automation logic for the Roblox gym macro.
 Made by starlingz
 """
 
-__version__ = "1.1.5"
+__version__ = "1.1.6"
 
 import time
 import random
@@ -946,9 +946,19 @@ class GymMacro:
         """
         self.log("🧪 Using creatine shaker...")
         
+        # Dismiss tug of war / type word prompt if on screen before opening shaker
+        word_prompts = self.type_word_prompt_templates()
+        for wp in word_prompts:
+            match = self.find_on_screen(wp, custom_threshold=0.88)
+            if match:
+                self.log("  Tug of war prompt detected, dismissing...")
+                self.handle_type_word_prompt(match)
+                self._sleep(1.0)
+                break
+        
         # Select shaker from hotbar slot 1 — UI opens automatically
         self.send_input("1")
-        self._sleep(1.5)
+        self._sleep(2.0)
         
         # Templates needed for the creatine fill process
         empty_circle_tmpl = self.cfg.template_dir / "empty_circle.png"
@@ -959,14 +969,15 @@ class GymMacro:
             self.rest_mouse()
             return
         
-        # Click the far-right circle to open popup
-        # Use configured coordinates if set, otherwise auto-detect
+        # Get 7th circle position
         if self.cfg.shaker_circle_x > 0 and self.cfg.shaker_circle_y > 0:
             fifth_x = self.cfg.shaker_circle_x
             fifth_y = self.cfg.shaker_circle_y
-            self.log(f"  Using configured circle position ({fifth_x}, {fifth_y})")
+        elif hasattr(self, '_saved_circle_pos') and self._saved_circle_pos:
+            fifth_x, fifth_y = self._saved_circle_pos
+            self.log(f"  Using saved circle position ({fifth_x}, {fifth_y})")
         else:
-            # Auto-detect: find all empty circles and pick rightmost on right half
+            # Auto-detect rightmost empty circle
             screen = self.grab_screen()
             screen_gray = cv2.cvtColor(screen, cv2.COLOR_BGR2GRAY)
             tmpl_bgr, tmpl_gray = self._load_template(empty_circle_tmpl)
@@ -976,29 +987,29 @@ class GymMacro:
             
             th, tw = tmpl_gray.shape[:2]
             result = cv2.matchTemplate(screen_gray, tmpl_gray, cv2.TM_CCOEFF_NORMED)
-            locations = np.where(result >= 0.50)
+            locations = np.where(result >= 0.60)
             
             circles = []
             for pt_y, pt_x in zip(*locations):
                 cx, cy = pt_x + tw//2, pt_y + th//2
-                # dedup: only merge if VERY close (within 1/3 of template width)
                 too_close = any(abs(cx - fx) < tw//3 and abs(cy - fy) < th//3 for fx, fy in circles)
                 if not too_close:
                     circles.append((cx, cy))
             
             if not circles:
-                self.log("⚠️ No empty circles found on screen.")
+                self.log("⚠️ No circles found.")
                 self.rest_mouse()
                 return
             
+            # Just pick the absolute rightmost circle. Period.
             circles.sort(key=lambda c: c[0])
-            self.log(f"  Found {len(circles)} circles, picking rightmost.")
             m = self._monitor
-            # Always pick the rightmost circle (should be circle 7)
-            fifth_x, fifth_y = circles[-1]
-            # Convert to absolute coords
-            fifth_x = m["left"] + fifth_x
-            fifth_y = m["top"] + fifth_y
+            fifth_x = m["left"] + circles[-1][0]
+            fifth_y = m["top"] + circles[-1][1]
+            
+            # Save for future use so tug of war can't mess it up next time
+            self._saved_circle_pos = (fifth_x, fifth_y)
+            self.log(f"  Detected & saved circle position ({fifth_x}, {fifth_y})")
         
         self.log(f"  Clicking far-right circle at ({fifth_x}, {fifth_y})")
         
@@ -1242,14 +1253,16 @@ class GymMacro:
             else:
                 self._sleep(2.0)
 
-        # One rep off mode: do 1 click then immediately get off
+        # One rep off mode: do 1 click then immediately get off — no waiting
         if self.cfg.one_rep_off:
-            self.send_input(self.cfg.key_workout_action, self.cfg.key_workout_hold)
-            self._sleep(0.5)
+            if self.cfg.key_workout_action.strip().lower() in self._MOUSE_ALIASES:
+                _raw_click()
+            else:
+                self.send_input(self.cfg.key_workout_action, self.cfg.key_workout_hold)
+            time.sleep(0.1)
             self._total_reps += 1
             self._sets_done += 1
             if self.cfg.progress_report_enabled and self._sets_done % self.cfg.progress_report_interval == 0:
-                # read weight fresh before reporting
                 weight = self._read_weight_from_screen()
                 if weight:
                     self._last_weight_kg = weight
@@ -1711,6 +1724,12 @@ class GymMacro:
         self.log("Getting off machine to regen stamina.")
         self.send_input(self.cfg.key_exit_machine, self.cfg.key_exit_hold)
         self.rest_mouse()
+        
+        # One rep mode: don't wait for full stamina, just get off briefly
+        if self.cfg.one_rep_off:
+            self._sleep(0.3)
+            return "regenerated"
+        
         self._sleep(0.3)
 
         full_template = self.cfg.template_dir / "full_stamina.png"
