@@ -1,3 +1,6 @@
+## v2.0.1 - 08/07/2026 07:40
+- fixed disconnect ping
+
 ## v2.0.0 - 08/07/2026 07:33
 - added coords mode VERY easy to set up
 
