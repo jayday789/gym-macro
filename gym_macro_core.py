@@ -5,7 +5,7 @@ Core automation logic for the Roblox gym macro.
 Made by starlingz
 """
 
-__version__ = "1.1.6"
+__version__ = "1.1.7"
 
 import time
 import random
@@ -396,11 +396,9 @@ class GymMacro:
         pydirectinput.moveTo(x, y)
 
     def move_and_click(self, x, y, double=False):
-        # nudge first so roblox registers the hover, then click
-        pydirectinput.moveTo(x + 2, y + 2)
-        time.sleep(0.02)
-        pydirectinput.moveTo(x, y)
-        time.sleep(0.06)  # Wait ~4 frames for Roblox to register hover
+        # Use raw Win32 SetCursorPos for fastest possible movement
+        ctypes.windll.user32.SetCursorPos(int(x), int(y))
+        time.sleep(0.03)  # minimal wait for Roblox to register
         if double:
             pydirectinput.click()
             time.sleep(0.05)
@@ -723,7 +721,7 @@ class GymMacro:
             self.send_input(self.cfg.key_interact, self.cfg.key_interact_hold)
 
         self.rest_mouse()
-        self._sleep(0.3)
+        self._sleep(0.1 if self.cfg.one_rep_off else 0.3)
         return True
 
     def _try_zoom_to_find_prompt(self):
@@ -834,7 +832,7 @@ class GymMacro:
             if not clicked:
                 return False
 
-            self._sleep(0.5)
+            self._sleep(0.2 if self.cfg.one_rep_off else 0.5)
             still_open = self._menu_still_open()
 
             if still_open is None:
@@ -1018,10 +1016,8 @@ class GymMacro:
         for i in range(5):
             self._check_stop()
             # Click the far-right circle
-            pydirectinput.moveTo(fifth_x + 2, fifth_y + 2)
-            time.sleep(0.02)
-            pydirectinput.moveTo(fifth_x, fifth_y)
-            time.sleep(0.06)
+            ctypes.windll.user32.SetCursorPos(int(fifth_x), int(fifth_y))
+            time.sleep(0.03)
             pydirectinput.click()
             self._sleep(0.5)
             
@@ -1032,10 +1028,8 @@ class GymMacro:
                     self.log("⚠️ Creatine not found in popup.")
                     break
             cx, cy, cconf = match_c
-            pydirectinput.moveTo(cx + 2, cy + 2)
-            time.sleep(0.02)
-            pydirectinput.moveTo(cx, cy)
-            time.sleep(0.06)
+            ctypes.windll.user32.SetCursorPos(int(cx), int(cy))
+            time.sleep(0.03)
             pydirectinput.click()
             self._sleep(0.3)
             self.log(f"  Filled circle #{i+1}")
@@ -1146,10 +1140,8 @@ class GymMacro:
             m = self._monitor
             fifth_x = m["left"] + int(m["width"] * 0.6)
             fifth_y = m["top"] + int(m["height"] * 0.78)
-        pydirectinput.moveTo(fifth_x + 2, fifth_y + 2)
-        time.sleep(0.02)
-        pydirectinput.moveTo(fifth_x, fifth_y)
-        time.sleep(0.06)
+        ctypes.windll.user32.SetCursorPos(int(fifth_x), int(fifth_y))
+        time.sleep(0.03)
         pydirectinput.click()
         self._sleep(0.5)
         
@@ -1238,7 +1230,7 @@ class GymMacro:
                 mode_tmpl = self.cfg.template_dir / "hypertrophy.png"
                 mode_label = "Hypertrophy"
 
-            if mode_tmpl.exists():
+            if mode_tmpl.exists() and not self.cfg.one_rep_off:
                 self.log(f"Waiting for {mode_label} indicator...")
                 match = self.wait_for_template(mode_tmpl, timeout=1, label=mode_label)
                 if match:

@@ -1,3 +1,6 @@
+## v1.1.7 - 08/06/2026 23:51
+- one rep mouse movement should be faster if liked will add the movement to all loops
+
 ## v1.1.6 - 08/06/2026 23:32
 - made one rep faster and fixed shaker blocked by tug of war now uses known shaker coords
 
