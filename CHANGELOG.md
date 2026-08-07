@@ -1,3 +1,6 @@
+## v2.0.2 - 08/07/2026 07:58
+- added spawn protection
+
 ## v2.0.1 - 08/07/2026 07:40
 - fixed disconnect ping
 

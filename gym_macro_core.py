@@ -5,7 +5,7 @@ Core automation logic for the Roblox gym macro.
 Made by starlingz
 """
 
-__version__ = "2.0.1"
+__version__ = "2.0.2"
 
 import time
 import random
@@ -1920,6 +1920,12 @@ class GymMacro:
         if not self.cfg.webhook_url.strip():
             return
         
+        # Prevent double-send within 10 seconds
+        now = time.time()
+        if hasattr(self, '_last_report_time') and (now - self._last_report_time) < 10:
+            return
+        self._last_report_time = now
+        
         sets_since_last = self._sets_done - self._last_report_set
         self._last_report_set = self._sets_done
         
@@ -2056,49 +2062,19 @@ class GymMacro:
                     last_disconnect_check = time.time()
                     while True:
                         self._check_stop()
-                        # Disconnect check every 30 seconds
-                        if time.time() - last_disconnect_check >= 30:
+                        # Disconnect/spawn check every 60 seconds
+                        if time.time() - last_disconnect_check >= 60:
                             last_disconnect_check = time.time()
-                            # Read stamina — if it's at 100 for 30s straight while we're
-                            # supposedly doing reps, we're not actually on a machine (disconnected/respawned)
                             screen = self.grab_screen()
-                            stam_tmpl = self.cfg.template_dir / "stamina_text.png"
-                            if stam_tmpl.exists():
-                                match = self.find_on_screen(stam_tmpl, custom_threshold=0.6, screen=screen)
-                                if match:
-                                    # Try to read stamina number
-                                    h, w = screen.shape[:2]
-                                    sx, sy, _ = match
-                                    m = self._monitor
-                                    rel_x = sx - m["left"]
-                                    rel_y = sy - m["top"]
-                                    tmpl_bgr, tmpl_gray = self._load_template(stam_tmpl)
-                                    if tmpl_gray is not None:
-                                        th, tw = tmpl_gray.shape[:2]
-                                        num_x1 = max(0, rel_x)
-                                        num_x2 = min(w, rel_x + tw + int(w*0.15))
-                                        num_y1 = max(0, rel_y - th)
-                                        num_y2 = min(h, rel_y + th)
-                                        stam_roi = screen[num_y1:num_y2, num_x1:num_x2]
-                                        try:
-                                            import pytesseract as _pyt
-                                            _local = Path(__file__).parent / "Tesseract-OCR" / "tesseract.exe"
-                                            if _local.exists():
-                                                _pyt.pytesseract.tesseract_cmd = str(_local)
-                                            gray = cv2.cvtColor(stam_roi, cv2.COLOR_BGR2GRAY)
-                                            scaled = cv2.resize(gray, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
-                                            _, thresh = cv2.threshold(scaled, 180, 255, cv2.THRESH_BINARY)
-                                            raw = _pyt.image_to_string(thresh, config='--psm 7 -c tessedit_char_whitelist=0123456789/')
-                                            all_nums = re.findall(r'\d+', raw)
-                                            if len(all_nums) >= 2 and int(all_nums[0]) == 100:
-                                                # Stamina is full — we're not working out
-                                                self.log("🚨 Stamina at 100 after 30s of reps — not on machine. Possible server reset.")
-                                                self.send_discord_ping("🚨 Gym macro: **Server reset or disconnected!** Stamina full while doing reps.")
-                                                raise StoppedException()
-                                        except (StoppedException):
-                                            raise
-                                        except Exception:
-                                            pass
+                            # Check for disconnect/error templates
+                            dc_templates = list(self.cfg.template_dir.glob("disconnect*.png"))
+                            dc_templates += list(self.cfg.template_dir.glob("spawn*.png"))
+                            for dc_tmpl in dc_templates:
+                                if self.find_on_screen(dc_tmpl, custom_threshold=0.7, screen=screen):
+                                    self.log(f"🚨 '{dc_tmpl.name}' detected! Stopping.")
+                                    self.send_discord_ping(f"🚨 Gym macro: **Detected '{dc_tmpl.stem}' — server reset or disconnected!**")
+                                    self.send_discord_screenshot("🚨 Screen:")
+                                    raise StoppedException()
                         # Rep — spam a few times to ensure it registers
                         for _ in range(5):
                             if self.cfg.key_workout_action.strip().lower() in self._MOUSE_ALIASES:
@@ -2185,7 +2161,9 @@ class GymMacro:
             pass
         finally:
             if self.cfg.progress_report_enabled and self._sets_done > 0:
-                self._send_progress_report()
+                # Only send final report if last one wasn't just sent
+                if self._sets_done % self.cfg.progress_report_interval != 0:
+                    self._send_progress_report()
             self.log("Coord macro finished.")
 
     def run(self):
