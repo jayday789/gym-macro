@@ -5,7 +5,7 @@ Core automation logic for the Roblox gym macro.
 Made by starlingz
 """
 
-__version__ = "1.1.10"
+__version__ = "1.1.11"
 
 import time
 import random
@@ -2077,6 +2077,11 @@ class GymMacro:
                         self._sleep(0.5)
                         continue
                     self.log("One-rep fast loop started. Spamming rep/off/on...")
+                    # Read weight once at start while on machine
+                    if self.cfg.progress_report_enabled:
+                        weight = self._read_weight_from_screen()
+                        if weight:
+                            self._last_weight_kg = weight
                     while True:
                         self._check_stop()
                         # Rep
@@ -2097,8 +2102,11 @@ class GymMacro:
                         if self._menu_still_open():
                             self.choose_workout()
                             time.sleep(0.2)
-                        # Progress report
+                        # Progress report — also re-read weight while on machine
                         if self.cfg.progress_report_enabled and self._sets_done % self.cfg.progress_report_interval == 0:
+                            weight = self._read_weight_from_screen()
+                            if weight:
+                                self._last_weight_kg = weight
                             self._send_progress_report()
                     continue
 

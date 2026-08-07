@@ -1,3 +1,6 @@
+## v1.1.11 - 08/07/2026 02:03
+- one rep weight read fix
+
 ## v1.1.10 - 08/07/2026 01:54
 - one rep speed fix
 
