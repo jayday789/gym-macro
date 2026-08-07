@@ -1,3 +1,6 @@
+## v2.0.5 - 08/07/2026 19:03
+- added new disconnect templates
+
 ## v2.0.4 - 08/07/2026 15:35
 - fixed tabbing out shaker
 
