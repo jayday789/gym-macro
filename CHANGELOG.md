@@ -1,3 +1,6 @@
+## v2.0.3 - 08/07/2026 11:55
+- fixed maintaining on one rep mode
+
 ## v2.0.2 - 08/07/2026 07:58
 - added spawn protection
 

@@ -558,6 +558,8 @@ class GymMacroGUI(tk.Tk):
             "coord_workout_y": (self.coord_workout_y, int),
             "coord_close_menu_x": (self.coord_close_menu_x, int),
             "coord_close_menu_y": (self.coord_close_menu_y, int),
+            "coord_shaker_x": (self.coord_shaker_x, int),
+            "coord_shaker_y": (self.coord_shaker_y, int),
         }
 
     def _save_settings(self, silent=False):
@@ -643,6 +645,11 @@ class GymMacroGUI(tk.Tk):
                         self.coord_workout_x, self.coord_workout_y, 1)
         self._coord_row(coords_frame, "Close menu X button (optional):",
                         self.coord_close_menu_x, self.coord_close_menu_y, 2)
+        
+        self.coord_shaker_x = tk.IntVar(value=0)
+        self.coord_shaker_y = tk.IntVar(value=0)
+        self._coord_row(coords_frame, "Shaker 7th circle (rightmost circle):",
+                        self.coord_shaker_x, self.coord_shaker_y, 3)
 
         # Instructions
         ttk.Label(
@@ -931,6 +938,8 @@ class GymMacroGUI(tk.Tk):
             coord_workout_y=int(self.coord_workout_y.get()),
             coord_close_menu_x=int(self.coord_close_menu_x.get()),
             coord_close_menu_y=int(self.coord_close_menu_y.get()),
+            shaker_circle_x=int(self.coord_shaker_x.get()),
+            shaker_circle_y=int(self.coord_shaker_y.get()),
         )
 
     def _start(self):

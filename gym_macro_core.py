@@ -5,7 +5,7 @@ Core automation logic for the Roblox gym macro.
 Made by starlingz
 """
 
-__version__ = "2.0.2"
+__version__ = "2.0.3"
 
 import time
 import random
@@ -2044,6 +2044,12 @@ class GymMacro:
                 if (time.time() - start_time) / 60 > self.cfg.max_loop_minutes:
                     break
 
+                # Check maintaining before getting on machine (unless keep_running is on)
+                if not self.cfg.keep_running_after_ping and self.is_maintaining():
+                    self.log("Reached maintaining status. Stopping.")
+                    self.send_discord_ping("💪 Gym macro: reached **maintaining** state.")
+                    break
+
                 # Click machine prompt position to get on
                 self.move_and_click(self.cfg.coord_machine_x, self.cfg.coord_machine_y)
                 self._sleep(0.3)
@@ -2066,6 +2072,11 @@ class GymMacro:
                         if time.time() - last_disconnect_check >= 60:
                             last_disconnect_check = time.time()
                             screen = self.grab_screen()
+                            # Check maintaining status (stop unless keep_running is on)
+                            if not self.cfg.keep_running_after_ping and self.is_maintaining(screen=screen):
+                                self.log("Reached maintaining status. Stopping.")
+                                self.send_discord_ping("💪 Gym macro: reached **maintaining** state.")
+                                raise StoppedException()
                             # Check for disconnect/error templates
                             dc_templates = list(self.cfg.template_dir.glob("disconnect*.png"))
                             dc_templates += list(self.cfg.template_dir.glob("spawn*.png"))
