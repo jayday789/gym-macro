@@ -5,7 +5,7 @@ Core automation logic for the Roblox gym macro.
 Made by starlingz
 """
 
-__version__ = "2.0.3"
+__version__ = "2.0.4"
 
 import time
 import random
@@ -415,7 +415,7 @@ class GymMacro:
         pydirectinput.moveTo(x, y)
 
     def move_and_click(self, x, y, double=False):
-        pydirectinput.moveTo(int(x) + 2, int(y) + 2)
+        pydirectinput.moveTo(int(x) + 1, int(y))
         time.sleep(0.02)
         pydirectinput.moveTo(int(x), int(y))
         time.sleep(0.06)
@@ -1066,9 +1066,7 @@ class GymMacro:
         for i in range(5):
             self._check_stop()
             # Click the far-right circle
-            ctypes.windll.user32.SetCursorPos(int(fifth_x), int(fifth_y))
-            time.sleep(0.03)
-            pydirectinput.click()
+            self.move_and_click(fifth_x, fifth_y)
             self._sleep(0.5)
             
             # Find creatine (first time) or click same spot
@@ -1078,9 +1076,7 @@ class GymMacro:
                     self.log("⚠️ Creatine not found in popup.")
                     break
             cx, cy, cconf = match_c
-            ctypes.windll.user32.SetCursorPos(int(cx), int(cy))
-            time.sleep(0.03)
-            pydirectinput.click()
+            self.move_and_click(cx, cy)
             self._sleep(0.3)
             self.log(f"  Filled circle #{i+1}")
         
@@ -1190,9 +1186,7 @@ class GymMacro:
             m = self._monitor
             fifth_x = m["left"] + int(m["width"] * 0.6)
             fifth_y = m["top"] + int(m["height"] * 0.78)
-        ctypes.windll.user32.SetCursorPos(int(fifth_x), int(fifth_y))
-        time.sleep(0.03)
-        pydirectinput.click()
+        self.move_and_click(fifth_x, fifth_y)
         self._sleep(0.5)
         
         # click pre workout once (1 scoop)
@@ -2086,7 +2080,8 @@ class GymMacro:
                                     self.send_discord_ping(f"🚨 Gym macro: **Detected '{dc_tmpl.stem}' — server reset or disconnected!**")
                                     self.send_discord_screenshot("🚨 Screen:")
                                     raise StoppedException()
-                        # Rep — spam a few times to ensure it registers
+
+                        # Rep
                         for _ in range(5):
                             if self.cfg.key_workout_action.strip().lower() in self._MOUSE_ALIASES:
                                 _raw_click()
@@ -2099,6 +2094,15 @@ class GymMacro:
                         # Get off
                         self.send_input(self.cfg.key_exit_machine, self.cfg.key_exit_hold)
                         time.sleep(0.2)
+                        # Shaker check — now off machine, do shaker before getting back on
+                        if self.cfg.junk_use_shaker and hasattr(self, '_last_shaker_use'):
+                            if (time.time() - self._last_shaker_use) / 60 >= self.cfg.junk_shaker_interval:
+                                self.use_creatine_shaker()
+                                self._last_shaker_use = time.time()
+                        if self.cfg.junk_use_preworkout and hasattr(self, '_last_preworkout_use'):
+                            if (time.time() - self._last_preworkout_use) / 60 >= self.cfg.junk_preworkout_interval:
+                                self.use_preworkout_shaker()
+                                self._last_preworkout_use = time.time()
                         # Get back on
                         self.move_and_click(self.cfg.coord_machine_x, self.cfg.coord_machine_y)
                         time.sleep(0.2)
@@ -2111,21 +2115,6 @@ class GymMacro:
                             if weight:
                                 self._last_weight_kg = weight
                             self._send_progress_report()
-                        # Shaker check
-                        if self.cfg.junk_use_shaker and hasattr(self, '_last_shaker_use'):
-                            if (time.time() - self._last_shaker_use) / 60 >= self.cfg.junk_shaker_interval:
-                                self.send_input(self.cfg.key_exit_machine, self.cfg.key_exit_hold)
-                                self._sleep(0.3)
-                                self.use_creatine_shaker()
-                                self._last_shaker_use = time.time()
-                                break  # restart outer loop to get back on machine
-                        if self.cfg.junk_use_preworkout and hasattr(self, '_last_preworkout_use'):
-                            if (time.time() - self._last_preworkout_use) / 60 >= self.cfg.junk_preworkout_interval:
-                                self.send_input(self.cfg.key_exit_machine, self.cfg.key_exit_hold)
-                                self._sleep(0.3)
-                                self.use_preworkout_shaker()
-                                self._last_preworkout_use = time.time()
-                                break
                     continue
 
                 # Normal mode (hypertrophy/strength/junk) — workout then stamina detect

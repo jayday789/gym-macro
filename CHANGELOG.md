@@ -1,3 +1,6 @@
+## v2.0.4 - 08/07/2026 15:35
+- fixed tabbing out shaker
+
 ## v2.0.3 - 08/07/2026 11:55
 - fixed maintaining on one rep mode
 
