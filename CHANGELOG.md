@@ -1,3 +1,6 @@
+## v1.1.10 - 08/07/2026 01:54
+- one rep speed fix
+
 ## v1.1.9 - 08/07/2026 01:03
 - added menu stuck fix
 

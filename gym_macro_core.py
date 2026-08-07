@@ -5,7 +5,7 @@ Core automation logic for the Roblox gym macro.
 Made by starlingz
 """
 
-__version__ = "1.1.9"
+__version__ = "1.1.10"
 
 import time
 import random
@@ -666,9 +666,15 @@ class GymMacro:
 
     def _menu_still_open(self, screen=None):
         menu_templates = self.select_exercise_menu_templates()
-        if not menu_templates:
-            return None
-        return any(self.find_on_screen(m, screen=screen) for m in menu_templates)
+        if menu_templates:
+            if any(self.find_on_screen(m, screen=screen) for m in menu_templates):
+                return True
+        # Fallback: check if chosen workout template is visible (menu is open)
+        if self.cfg.chosen_workout and self.cfg.chosen_workout not in ("Any", "Abs"):
+            target = self.cfg.template_dir / self.cfg.chosen_workout
+            if target.exists() and self.find_on_screen(target, screen=screen):
+                return True
+        return False
 
     def workout_templates(self):
         return sorted(self.cfg.template_dir.glob("workout_*.png"))
@@ -689,9 +695,23 @@ class GymMacro:
             self.log("No machine_prompt*.png templates found!")
             return False
 
-        match = self._wait_for_prompt_clearing_obstructions(prompts, timeout=self.cfg.prompt_search_timeout)
+        # One-rep mode: short timeout, speed is priority
+        timeout = 3.0 if self.cfg.one_rep_off else self.cfg.prompt_search_timeout
+        match = self._wait_for_prompt_clearing_obstructions(prompts, timeout=timeout)
         if not match:
             self._prompt_miss_count += 1
+
+            # One-rep mode: skip slow watchdog stuff, just retry fast
+            if self.cfg.one_rep_off:
+                if self._menu_still_open():
+                    self.choose_workout()
+                # Still detect disconnect after many failures
+                if self._prompt_miss_count >= 30:
+                    self.log("🚨 Likely disconnected — too many missed prompts.")
+                    self.send_discord_ping("🚨 Gym macro: **Likely disconnected!** Stopping macro.")
+                    raise StoppedException()
+                return False
+
             self.log(f"Machine prompt not found this attempt ({self._prompt_miss_count} in a row).")
 
             # Send a screenshot to Discord so you can see what's wrong
@@ -782,11 +802,15 @@ class GymMacro:
                     obstruction_cleared_this_loop = True
                     break  
 
-            if not obstruction_cleared_this_loop and self._menu_still_open(screen=screen):
+            if not obstruction_cleared_this_loop and not self.cfg.one_rep_off and self._menu_still_open(screen=screen):
                 self.log("Exercise menu detected during prompt search, clicking workout...")
-                self.choose_workout()
+                if self.choose_workout():
+                    # Menu was open and we clicked the workout — we're already on machine
+                    # Return a dummy match so approach_and_interact succeeds
+                    m = self._monitor
+                    return (m["left"] + m["width"]//2, m["top"] + m["height"]//2, 1.0)
                 self._sleep(0.3)
-                return self.find_on_screen(prompt_templates[0], screen=self.grab_screen()) if prompt_templates else None
+                continue
 
             if not obstruction_cleared_this_loop:
                 found_match = None
@@ -2032,11 +2056,52 @@ class GymMacro:
                     continue
 
                 if not self.approach_and_interact():
-                    self._sleep(1)
-                    continue
+                    # Check if exercise menu is open (we might already be on the machine)
+                    if self._menu_still_open():
+                        self.log("Menu already open, clicking workout...")
+                        if self.choose_workout():
+                            pass  # fall through to workout loop below
+                        else:
+                            self._sleep(1)
+                            continue
+                    else:
+                        self._sleep(1)
+                        continue
 
                 cycle_done = False
                 first_set = True
+                
+                # One-rep fast loop: skip vision, just spam keys as fast as possible
+                if self.cfg.one_rep_off:
+                    if not self.choose_workout():
+                        self._sleep(0.5)
+                        continue
+                    self.log("One-rep fast loop started. Spamming rep/off/on...")
+                    while True:
+                        self._check_stop()
+                        # Rep
+                        if self.cfg.key_workout_action.strip().lower() in self._MOUSE_ALIASES:
+                            _raw_click()
+                        else:
+                            self.send_input(self.cfg.key_workout_action, self.cfg.key_workout_hold)
+                        self._total_reps += 1
+                        self._sets_done += 1
+                        time.sleep(0.1)
+                        # Get off
+                        self.send_input(self.cfg.key_exit_machine, self.cfg.key_exit_hold)
+                        time.sleep(0.15)
+                        # Get back on
+                        self.send_input(self.cfg.key_interact, self.cfg.key_interact_hold)
+                        time.sleep(0.3)
+                        # Click workout from menu (if it appears)
+                        if self._menu_still_open():
+                            self.choose_workout()
+                            time.sleep(0.2)
+                        # Progress report
+                        if self.cfg.progress_report_enabled and self._sets_done % self.cfg.progress_report_interval == 0:
+                            self._send_progress_report()
+                    continue
+
                 while not cycle_done:
                     self._check_stop()
 
