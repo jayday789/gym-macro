@@ -5,7 +5,7 @@ Core automation logic for the Roblox gym macro.
 Made by starlingz
 """
 
-__version__ = "1.1.11"
+__version__ = "2.0.0"
 
 import time
 import random
@@ -130,6 +130,13 @@ class MacroConfig:
     starting_crew_xp: int = 0  # your crew xp at the start of session
     xp_per_rep: int = 1  # base xp per rep
     reps_per_set: int = 3  # how many reps the game does per set (for counting)
+    # --- saved coordinates (set via wizard, 0 = not set) ---
+    coord_machine_x: int = 0  # where to click to get on machine
+    coord_machine_y: int = 0
+    coord_workout_x: int = 0  # exercise button in menu
+    coord_workout_y: int = 0
+    coord_close_menu_x: int = 0  # X button to close menu
+    coord_close_menu_y: int = 0
 
 
 class StoppedException(Exception):
@@ -1999,11 +2006,154 @@ class GymMacro:
         except Exception as e:
             self.log(f"Progress report failed: {e}")
 
+    def _coords_set(self):
+        """Check if required coords are configured."""
+        return self.cfg.coord_machine_x > 0 and self.cfg.coord_workout_x > 0
+
+    def run_coord_loop(self):
+        """Fast coord-based loop — clicks saved positions, no template matching."""
+        self.log("Starting coord-based macro (fast mode).")
+        self.log(f"  Machine: ({self.cfg.coord_machine_x}, {self.cfg.coord_machine_y})")
+        self.log(f"  Workout: ({self.cfg.coord_workout_x}, {self.cfg.coord_workout_y})")
+        start_time = time.time()
+        self._macro_start_time = start_time
+
+        # Focus game
+        m = self._monitor
+        pydirectinput.moveTo(m["left"] + m["width"] // 2, m["top"] + m["height"] // 2)
+        pydirectinput.click()
+        self._sleep(0.3)
+
+        # Shakers at startup
+        if self.cfg.workout_mode.lower() == "junk" and self.cfg.junk_use_shaker:
+            self.use_creatine_shaker()
+            self._last_shaker_use = time.time()
+        if self.cfg.junk_use_preworkout:
+            self.use_preworkout_shaker()
+            self._last_preworkout_use = time.time()
+
+        try:
+            while True:
+                self._check_stop()
+                if (time.time() - start_time) / 60 > self.cfg.max_loop_minutes:
+                    break
+
+                # Click machine prompt position to get on
+                self.move_and_click(self.cfg.coord_machine_x, self.cfg.coord_machine_y)
+                self._sleep(0.3)
+
+                # Click workout in menu
+                self.move_and_click(self.cfg.coord_workout_x, self.cfg.coord_workout_y)
+                self._sleep(0.3)
+
+                # One-rep fast mode
+                if self.cfg.one_rep_off:
+                    # Read weight on first set
+                    if self._sets_done == 0 and self.cfg.progress_report_enabled:
+                        weight = self._read_weight_from_screen()
+                        if weight:
+                            self._last_weight_kg = weight
+                    while True:
+                        self._check_stop()
+                        # Rep
+                        # Rep — spam a few times to ensure it registers
+                        for _ in range(5):
+                            if self.cfg.key_workout_action.strip().lower() in self._MOUSE_ALIASES:
+                                _raw_click()
+                            else:
+                                self.send_input(self.cfg.key_workout_action, self.cfg.key_workout_hold)
+                            time.sleep(0.05)
+                        self._total_reps += 1
+                        self._sets_done += 1
+                        time.sleep(0.15)
+                        # Get off
+                        self.send_input(self.cfg.key_exit_machine, self.cfg.key_exit_hold)
+                        time.sleep(0.2)
+                        # Get back on
+                        self.move_and_click(self.cfg.coord_machine_x, self.cfg.coord_machine_y)
+                        time.sleep(0.2)
+                        # Click workout
+                        self.move_and_click(self.cfg.coord_workout_x, self.cfg.coord_workout_y)
+                        time.sleep(0.2)
+                        # Progress report
+                        if self.cfg.progress_report_enabled and self._sets_done % self.cfg.progress_report_interval == 0:
+                            weight = self._read_weight_from_screen()
+                            if weight:
+                                self._last_weight_kg = weight
+                            self._send_progress_report()
+                        # Shaker check
+                        if self.cfg.junk_use_shaker and hasattr(self, '_last_shaker_use'):
+                            if (time.time() - self._last_shaker_use) / 60 >= self.cfg.junk_shaker_interval:
+                                self.send_input(self.cfg.key_exit_machine, self.cfg.key_exit_hold)
+                                self._sleep(0.3)
+                                self.use_creatine_shaker()
+                                self._last_shaker_use = time.time()
+                                break  # restart outer loop to get back on machine
+                        if self.cfg.junk_use_preworkout and hasattr(self, '_last_preworkout_use'):
+                            if (time.time() - self._last_preworkout_use) / 60 >= self.cfg.junk_preworkout_interval:
+                                self.send_input(self.cfg.key_exit_machine, self.cfg.key_exit_hold)
+                                self._sleep(0.3)
+                                self.use_preworkout_shaker()
+                                self._last_preworkout_use = time.time()
+                                break
+                    continue
+
+                # Normal mode (hypertrophy/strength/junk) — workout then stamina detect
+                # Read weight while on machine
+                if self.cfg.progress_report_enabled:
+                    weight = self._read_weight_from_screen()
+                    if weight:
+                        self._last_weight_kg = weight
+
+                result = self.work_out_until_low_stamina(skip_mode_wait=True)
+                if result == "maintaining":
+                    self._handle_maintaining_flow()
+                    continue
+                if result == "deficit":
+                    self._on_deficit()
+                    return
+
+                # Get off and regen
+                self.send_input(self.cfg.key_exit_machine, self.cfg.key_exit_hold)
+                self._sleep(0.3)
+
+                # Wait for full stamina
+                full_template = self.cfg.template_dir / "full_stamina.png"
+                regen_start = time.time()
+                while True:
+                    self._check_stop()
+                    if full_template.exists() and self.find_on_screen(full_template):
+                        break
+                    if (time.time() - regen_start) > self.cfg.regen_fallback_seconds:
+                        break
+                    self._sleep(0.1)
+
+                # Shaker checks during regen
+                if self.cfg.junk_use_shaker and hasattr(self, '_last_shaker_use'):
+                    if (time.time() - self._last_shaker_use) / 60 >= self.cfg.junk_shaker_interval:
+                        self.use_creatine_shaker()
+                        self._last_shaker_use = time.time()
+                if self.cfg.junk_use_preworkout and hasattr(self, '_last_preworkout_use'):
+                    if (time.time() - self._last_preworkout_use) / 60 >= self.cfg.junk_preworkout_interval:
+                        self.use_preworkout_shaker()
+                        self._last_preworkout_use = time.time()
+
+        except StoppedException:
+            pass
+        finally:
+            if self.cfg.progress_report_enabled and self._sets_done > 0:
+                self._send_progress_report()
+            self.log("Coord macro finished.")
+
     def run(self):
         # Bulk buy food if enabled
         if self.cfg.bulk_buy_enabled:
             self.bulk_buy_food()
-            return  # Stop after buying — user needs to position for macro
+            return
+
+        # Use coord-based loop if coords are set
+        if self._coords_set():
+            return self.run_coord_loop()
 
         # Use simple timing-based loop if configured
         if self.cfg.use_simple_loop:

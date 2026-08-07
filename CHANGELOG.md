@@ -1,3 +1,6 @@
+## v2.0.0 - 08/07/2026 07:33
+- added coords mode VERY easy to set up
+
 ## v1.1.11 - 08/07/2026 02:03
 - one rep weight read fix
 

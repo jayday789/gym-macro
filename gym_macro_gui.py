@@ -69,15 +69,18 @@ class GymMacroGUI(tk.Tk):
         settings_tab = ttk.Frame(notebook)
         templates_tab = ttk.Frame(notebook)
         debug_tab = ttk.Frame(notebook)
+        setup_tab = ttk.Frame(notebook)
         run_tab = ttk.Frame(notebook)
 
         notebook.add(settings_tab, text="Settings")
+        notebook.add(setup_tab, text="Setup Coords")
         notebook.add(templates_tab, text="Templates")
         notebook.add(debug_tab, text="Debug")
         notebook.add(run_tab, text="Run")
 
         settings_scroll_area = self._make_scrollable(settings_tab)
         self._build_settings_tab(settings_scroll_area)
+        self._build_setup_tab(setup_tab)
         self._build_templates_tab(templates_tab)
         self._build_debug_tab(debug_tab)
         self._build_run_tab(run_tab)
@@ -549,6 +552,12 @@ class GymMacroGUI(tk.Tk):
             "bulk_buy_enabled": (self.bulk_buy_enabled, bool),
             "bulk_buy_amount": (self.bulk_buy_amount, int),
             "bulk_buy_price": (self.bulk_buy_price, int),
+            "coord_machine_x": (self.coord_machine_x, int),
+            "coord_machine_y": (self.coord_machine_y, int),
+            "coord_workout_x": (self.coord_workout_x, int),
+            "coord_workout_y": (self.coord_workout_y, int),
+            "coord_close_menu_x": (self.coord_close_menu_x, int),
+            "coord_close_menu_y": (self.coord_close_menu_y, int),
         }
 
     def _save_settings(self, silent=False):
@@ -602,6 +611,77 @@ class GymMacroGUI(tk.Tk):
 
         ttk.Button(parent, text="Open templates folder", command=self._open_template_folder)\
             .pack(padx=8, pady=6, anchor="w")
+
+    def _build_setup_tab(self, parent):
+        pad = {"padx": 8, "pady": 6}
+
+        info_frame = ttk.LabelFrame(parent, text="Coordinate Setup")
+        info_frame.pack(fill="x", **pad)
+
+        ttk.Label(
+            info_frame,
+            text="Set positions by hovering your mouse over each element in-game then clicking 'Capture'.\n"
+                 "Once all coords are set, the macro uses them directly instead of template matching (much faster).\n"
+                 "Set coords to 0,0 to disable and fall back to template mode.",
+            foreground="#555",
+            wraplength=550,
+        ).pack(padx=4, pady=(4, 8))
+
+        coords_frame = ttk.Frame(parent)
+        coords_frame.pack(fill="x", **pad)
+
+        self.coord_machine_x = tk.IntVar(value=0)
+        self.coord_machine_y = tk.IntVar(value=0)
+        self.coord_workout_x = tk.IntVar(value=0)
+        self.coord_workout_y = tk.IntVar(value=0)
+        self.coord_close_menu_x = tk.IntVar(value=0)
+        self.coord_close_menu_y = tk.IntVar(value=0)
+
+        self._coord_row(coords_frame, "Machine prompt (where to click to get on):",
+                        self.coord_machine_x, self.coord_machine_y, 0)
+        self._coord_row(coords_frame, "Workout button (exercise name in menu):",
+                        self.coord_workout_x, self.coord_workout_y, 1)
+        self._coord_row(coords_frame, "Close menu X button (optional):",
+                        self.coord_close_menu_x, self.coord_close_menu_y, 2)
+
+        # Instructions
+        ttk.Label(
+            parent,
+            text="How to use:\n"
+                 "1. Open Roblox, stand next to your machine\n"
+                 "2. Hover your mouse over the 'Press E' / machine prompt\n"
+                 "3. Click 'Capture' next to 'Machine prompt' above\n"
+                 "4. Get on the machine, hover over your exercise in the menu\n"
+                 "5. Click 'Capture' next to 'Workout button'\n"
+                 "6. Hit Start — the macro will click those exact spots every time",
+            foreground="#555",
+            wraplength=550,
+            justify="left",
+        ).pack(padx=12, pady=8, anchor="w")
+
+    def _coord_row(self, parent, label, x_var, y_var, row):
+        ttk.Label(parent, text=label).grid(row=row, column=0, sticky="w", padx=4, pady=6)
+        frame = ttk.Frame(parent)
+        frame.grid(row=row, column=1, sticky="w", padx=4, pady=6)
+        ttk.Label(frame, text="X:").pack(side="left")
+        ttk.Entry(frame, textvariable=x_var, width=6).pack(side="left", padx=2)
+        ttk.Label(frame, text="Y:").pack(side="left", padx=(8, 0))
+        ttk.Entry(frame, textvariable=y_var, width=6).pack(side="left", padx=2)
+        ttk.Button(frame, text="Capture", command=lambda xv=x_var, yv=y_var: self._capture_coord(xv, yv)).pack(side="left", padx=8)
+
+    def _capture_coord(self, x_var, y_var):
+        """Wait 3 seconds then capture mouse position."""
+        self.log_queue.put(f"[{time.strftime('%H:%M:%S')}] Capturing in 3 seconds... hover over the target!")
+        
+        def do_capture():
+            time.sleep(3)
+            import pyautogui
+            x, y = pyautogui.position()
+            x_var.set(x)
+            y_var.set(y)
+            self.log_queue.put(f"[{time.strftime('%H:%M:%S')}] Captured position: ({x}, {y})")
+        
+        threading.Thread(target=do_capture, daemon=True).start()
 
     def _build_debug_tab(self, parent):
         pad = {"padx": 8, "pady": 6}
@@ -845,6 +925,12 @@ class GymMacroGUI(tk.Tk):
             bulk_buy_enabled=bool(self.bulk_buy_enabled.get()),
             bulk_buy_amount=int(self.bulk_buy_amount.get()),
             bulk_buy_price=int(self.bulk_buy_price.get()),
+            coord_machine_x=int(self.coord_machine_x.get()),
+            coord_machine_y=int(self.coord_machine_y.get()),
+            coord_workout_x=int(self.coord_workout_x.get()),
+            coord_workout_y=int(self.coord_workout_y.get()),
+            coord_close_menu_x=int(self.coord_close_menu_x.get()),
+            coord_close_menu_y=int(self.coord_close_menu_y.get()),
         )
 
     def _start(self):
@@ -864,18 +950,20 @@ class GymMacroGUI(tk.Tk):
             if not proceed:
                 return
 
-        # Check for stamina_text.png template
-        stam_tmpl = Path(self.template_dir.get()) / "stamina_text.png"
-        if not stam_tmpl.exists():
-            messagebox.showwarning(
-                "Stamina template required",
-                "You need to create 'stamina_text.png' before starting.\n\n"
-                "1. Use Debug tab → 'Capture screen now'\n"
-                "2. Open the screenshot and crop just the word 'Stamina'\n"
-                "3. Save it as templates/stamina_text.png\n\n"
-                "This is required so the macro can find your stamina number on screen.",
-            )
-            return
+        # Check for stamina_text.png template (not needed for one-rep mode)
+        if not bool(self.one_rep_off.get()):
+            stam_tmpl = Path(self.template_dir.get()) / "stamina_text.png"
+            if not stam_tmpl.exists():
+                messagebox.showwarning(
+                    "Stamina template required",
+                    "You need to create 'stamina_text.png' before starting.\n\n"
+                    "1. Use Debug tab → 'Capture screen now'\n"
+                    "2. Open the screenshot and crop just the word 'Stamina'\n"
+                    "3. Save it as templates/stamina_text.png\n\n"
+                    "This is required so the macro can find your stamina number on screen.\n"
+                    "(Not required for one-rep mode)",
+                )
+                return
 
         self.stop_event.clear()
         self.status_var.set("Running")
