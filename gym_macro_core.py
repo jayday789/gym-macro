@@ -5,7 +5,7 @@ Core automation logic for the Roblox gym macro.
 Made by starlingz
 """
 
-__version__ = "1.1.8"
+__version__ = "1.1.9"
 
 import time
 import random
@@ -783,9 +783,10 @@ class GymMacro:
                     break  
 
             if not obstruction_cleared_this_loop and self._menu_still_open(screen=screen):
-                self.close_exercise_menu()
+                self.log("Exercise menu detected during prompt search, clicking workout...")
+                self.choose_workout()
                 self._sleep(0.3)
-                continue  
+                return self.find_on_screen(prompt_templates[0], screen=self.grab_screen()) if prompt_templates else None
 
             if not obstruction_cleared_this_loop:
                 found_match = None
