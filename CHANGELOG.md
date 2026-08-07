@@ -1,3 +1,6 @@
+## v1.1.8 - 08/07/2026 00:41
+- roblox sucks and does hover bug whenn its faster reverted
+
 ## v1.1.7 - 08/06/2026 23:51
 - one rep mouse movement should be faster if liked will add the movement to all loops
 

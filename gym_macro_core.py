@@ -5,7 +5,7 @@ Core automation logic for the Roblox gym macro.
 Made by starlingz
 """
 
-__version__ = "1.1.7"
+__version__ = "1.1.8"
 
 import time
 import random
@@ -194,6 +194,18 @@ class GymMacro:
         "rmb": "right", "mouse2": "right", "rightclick": "right", "right_click": "right", "right click": "right",
         "mmb": "middle", "mouse3": "middle", "middleclick": "middle", "middle_click": "middle", "middle click": "middle",
     }
+
+    def _is_game_focused(self):
+        """Check if the Roblox window is currently in the foreground."""
+        try:
+            hwnd = ctypes.windll.user32.GetForegroundWindow()
+            length = ctypes.windll.user32.GetWindowTextLengthW(hwnd)
+            buf = ctypes.create_unicode_buffer(length + 1)
+            ctypes.windll.user32.GetWindowTextW(hwnd, buf, length + 1)
+            title = buf.value.lower()
+            return "roblox" in title
+        except Exception:
+            return True  # assume focused if check fails
 
     def send_input(self, key_name: str, hold_seconds: float = 0.0):
         normalized = key_name.strip().lower()
@@ -396,9 +408,10 @@ class GymMacro:
         pydirectinput.moveTo(x, y)
 
     def move_and_click(self, x, y, double=False):
-        # Use raw Win32 SetCursorPos for fastest possible movement
-        ctypes.windll.user32.SetCursorPos(int(x), int(y))
-        time.sleep(0.03)  # minimal wait for Roblox to register
+        pydirectinput.moveTo(int(x) + 2, int(y) + 2)
+        time.sleep(0.02)
+        pydirectinput.moveTo(int(x), int(y))
+        time.sleep(0.06)
         if double:
             pydirectinput.click()
             time.sleep(0.05)
@@ -686,8 +699,13 @@ class GymMacro:
                 self.send_discord_screenshot(f"⚠️ Can't find machine prompt (attempt #{self._prompt_miss_count}):")
 
             if self._prompt_miss_count % self.cfg.prompt_miss_unstick_after == 0:
-                self.log(f"⚠️ Watchdog: no machine prompt found. Pressing space...")
-                self.send_input("space")
+                # Don't press space if exercise menu is open (would make character jump)
+                if self._menu_still_open():
+                    self.log("Exercise menu is open, trying to click workout instead of space...")
+                    self.choose_workout()
+                else:
+                    self.log(f"⚠️ Watchdog: no machine prompt found. Pressing space...")
+                    self.send_input("space")
 
             # Try zooming in/out to find the machine prompt at different camera angles
             self._try_zoom_to_find_prompt()
