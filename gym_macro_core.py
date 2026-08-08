@@ -5,7 +5,7 @@ Core automation logic for the Roblox gym macro.
 Made by starlingz
 """
 
-__version__ = "2.0.5"
+__version__ = "2.0.6"
 
 import time
 import random
@@ -2081,16 +2081,13 @@ class GymMacro:
                                     self.send_discord_screenshot("🚨 Screen:")
                                     raise StoppedException()
 
-                        # Rep
-                        for _ in range(5):
-                            if self.cfg.key_workout_action.strip().lower() in self._MOUSE_ALIASES:
-                                _raw_click()
-                            else:
-                                self.send_input(self.cfg.key_workout_action, self.cfg.key_workout_hold)
-                            time.sleep(0.05)
+                        # Rep — spam click fast
+                        for _ in range(15):
+                            _raw_click()
+                            time.sleep(0.02)
                         self._total_reps += 1
                         self._sets_done += 1
-                        time.sleep(0.15)
+                        time.sleep(0.1)
                         # Get off
                         self.send_input(self.cfg.key_exit_machine, self.cfg.key_exit_hold)
                         time.sleep(0.2)

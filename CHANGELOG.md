@@ -1,3 +1,6 @@
+## v2.0.6 - 08/08/2026 00:17
+- made one rep more consistent
+
 ## v2.0.5 - 08/07/2026 19:03
 - added new disconnect templates
 
